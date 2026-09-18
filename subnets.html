@@ -55,9 +55,9 @@
 
   /* the board */
   .board{display:flex;gap:18px;overflow-x:auto;padding:6px 4px 18px}
-  .col{flex:0 0 190px;display:flex;flex-direction:column;border:2.5px solid var(--line);
+  .col{flex:1 1 190px;min-width:190px;display:flex;flex-direction:column;border:2.5px solid var(--line);
     border-radius:3px;background:#fff;height:760px}
-  .col.base{flex-basis:150px}
+  .col.base{flex-basis:150px;min-width:150px}
   .col h3{margin:0;padding:6px 8px;font-size:14px;font-weight:600;border-bottom:2.5px solid var(--line);
     background:var(--paper)}
   .col h3 small{display:block;font-weight:400;color:var(--ink-soft);font-size:12px}
@@ -93,8 +93,8 @@
     h1{font-size:22px}
     .bar input{width:100%}
     .bar label{width:100%}
-    .col{flex-basis:140px;height:70vh;min-height:520px}
-    .col.base{flex-basis:96px}
+    .col{flex-basis:140px;min-width:140px;height:70vh;min-height:520px}
+    .col.base{flex-basis:96px;min-width:96px}
     .blk .pre{font-size:17px}
     .col.dense .blk .pre{font-size:13px}
     .blk .full{display:none !important}
