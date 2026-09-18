@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Как рисовать L2- и L3-схемы сети</title>
+<style>
+  :root{
+    --paper:#fbfbf8; --grid:#e6e8e2; --ink:#1d2433; --ink-soft:#5b6472;
+    --marker:#1f5fbf; --marker-soft:#dce8fa; --line:#2a2f3a; --warn:#b84a1f; --warn-soft:#fbe9e0;
+    --ok:#1f7a4d; --ok-soft:#dff3e8; --l2:#7a3fb5; --l2-soft:#ede3f8;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--paper);color:var(--ink);
+    font:16px/1.55 "Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+  body{background-image:linear-gradient(var(--grid) 1px,transparent 1px),
+       linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px}
+  main{max-width:900px;margin:0 auto;padding:32px 20px 80px}
+  h1{font-size:30px;font-weight:600;letter-spacing:-.01em;margin:0 0 8px;line-height:1.2}
+  h2{font-size:22px;font-weight:600;margin:52px 0 14px;padding-top:14px;border-top:2.5px solid var(--line)}
+  h3{font-size:17px;font-weight:600;margin:26px 0 8px}
+  p{margin:0 0 12px;max-width:74ch}
+  ul,ol{margin:0 0 12px;padding-left:22px;max-width:74ch}
+  li{margin:4px 0}
+  .lead{color:var(--ink-soft);margin-bottom:20px}
+  a{color:var(--marker)}
+  code,.mono{font-family:ui-monospace,"JetBrains Mono","Cascadia Mono",Consolas,monospace}
+  code{background:#fff;border:1px solid var(--grid);border-radius:3px;padding:0 4px;font-size:.94em}
+  nav.toc{background:#fff;border:2.5px solid var(--line);border-radius:3px;padding:12px 16px;margin:0 0 8px}
+  nav.toc ol{margin:0;padding-left:22px}
+  nav.toc li{margin:3px 0}
+
+  /* переключатель языка: правило работает и для SVG-элементов */
+  html[lang="ru"] [data-lang="en"],
+  html[lang="en"] [data-lang="ru"]{display:none !important}
+  .top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+  .lang{display:flex;flex:0 0 auto;border:2px solid var(--line);border-radius:4px;overflow:hidden;margin-top:4px}
+  .lang button{font:inherit;font-size:13px;font-weight:600;padding:5px 11px;border:0;
+    background:#fff;color:var(--ink-soft);cursor:pointer}
+  .lang button+button{border-left:2px solid var(--line)}
+  .lang button:hover{background:var(--marker-soft)}
+  .lang button[aria-pressed="true"]{background:var(--line);color:#fff}
+  .lang button:focus-visible{outline:3px solid var(--marker);outline-offset:-3px}
+
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+  .card{background:#fff;border:2.5px solid var(--line);border-radius:3px;padding:14px 16px}
+  .card h3{margin:0 0 8px}
+  .card.l2 h3{color:var(--l2)} .card.l3 h3{color:var(--marker)}
+  .card ul{margin:0}
+  .note{border-left:5px solid var(--ok);background:var(--ok-soft);padding:8px 12px;margin:12px 0;border-radius:0 3px 3px 0}
+  .bad{border-left:5px solid var(--warn);background:var(--warn-soft);padding:8px 12px;margin:12px 0;border-radius:0 3px 3px 0}
+
+  .tw{overflow-x:auto;margin:12px 0}
+  table{border-collapse:collapse;background:#fff;border:2.5px solid var(--line);font-size:15px;min-width:100%}
+  th,td{padding:6px 10px;border-bottom:1px solid var(--grid);white-space:nowrap;text-align:left;vertical-align:top}
+  th{background:var(--paper);border-bottom:2.5px solid var(--line);font-weight:600}
+
+  /* схемы */
+  .dia{background:#fff;border:2.5px solid var(--line);border-radius:3px;margin:14px 0;overflow-x:auto}
+  .dia svg{display:block;width:100%;min-width:640px;height:auto;font-family:"Segoe UI",Roboto,Arial,sans-serif}
+  .dia .cap{padding:8px 14px;border-top:2px solid var(--line);font-size:14px;color:var(--ink-soft);background:var(--paper)}
+  .dia .cap b{color:var(--ink)}
+  .zoom{font-size:13px;color:var(--ink-soft);margin:-8px 0 14px}
+  svg .dev{fill:#fff;stroke:var(--line);stroke-width:2}
+  svg .sw{fill:var(--l2-soft);stroke:var(--l2);stroke-width:2}
+  svg .rt{fill:var(--marker-soft);stroke:var(--marker);stroke-width:2}
+  svg .fw{fill:var(--warn-soft);stroke:var(--warn);stroke-width:2}
+  svg .net{fill:var(--marker-soft);stroke:var(--marker);stroke-width:2;stroke-dasharray:6 4}
+  svg .cloud{fill:#fff;stroke:var(--line);stroke-width:2}
+  svg .link{stroke:var(--line);stroke-width:2;fill:none}
+  svg .trunk{stroke:var(--l2);stroke-width:3;fill:none}
+  svg .name{font-size:13px;font-weight:600;fill:var(--ink);text-anchor:middle}
+  svg .sub{font-size:11px;fill:var(--ink-soft);text-anchor:middle}
+  svg .port{font-size:10.5px;fill:var(--ink);font-family:ui-monospace,Consolas,monospace}
+  svg .vl{font-size:10.5px;fill:var(--l2);font-family:ui-monospace,Consolas,monospace}
+  svg .ip{font-size:11px;fill:var(--marker);font-family:ui-monospace,Consolas,monospace;font-weight:600;text-anchor:middle}
+  svg .ipl{text-anchor:start}
+  svg .lbl{font-size:11px;fill:var(--ink-soft)}
+  svg .legend{font-size:11px;fill:var(--ink)}
+
+  @media (max-width:640px){
+    html,body{font-size:15px}
+    main{padding:20px 12px 60px}
+    h1{font-size:24px} h2{font-size:19px;margin-top:40px}
+    .two{grid-template-columns:1fr}
+    .card{padding:12px}
+    table{font-size:13px}
+  }
+  @media print{body{background:#fff} nav.toc,.lang{display:none} .dia svg{min-width:0}}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <h1>
+      <span data-lang="ru">Как рисовать L2- и L3-схемы сети</span>
+      <span data-lang="en">Drawing L2 and L3 network diagrams</span>
+    </h1>
+    <div class="lang" id="lang">
+      <button type="button" data-lang-btn="ru" aria-pressed="true">RU</button>
+      <button type="button" data-lang-btn="en" aria-pressed="false">EN</button>
+    </div>
+  </div>
+  <p class="lead" data-lang="ru">Разделение документации сети на два уровня. L2 фиксирует физические соединения, номера портов и VLAN;
+    L3 — подсети, адреса интерфейсов, шлюзы и маршрутизацию. Далее: состав каждой схемы, обозначения, пример офиса на 40 человек
+    в двух вариантах, сопутствующие таблицы и порядок работы.</p>
+  <p class="lead" data-lang="en">Splitting network documentation into two layers. L2 records physical connections, port numbers and VLANs;
+    L3 records subnets, interface addresses, gateways and routing. Below: what belongs on each diagram, notation, a 40-person office
+    drawn both ways, the accompanying tables and the order of work.</p>
+
+  <nav class="toc"><ol>
+    <li><a href="#why" data-lang="ru">Зачем две схемы</a><a href="#why" data-lang="en">Why two diagrams</a></li>
+    <li><a href="#what" data-lang="ru">Что показывать на каждой</a><a href="#what" data-lang="en">What belongs on each</a></li>
+    <li><a href="#legend" data-lang="ru">Обозначения</a><a href="#legend" data-lang="en">Notation</a></li>
+    <li><a href="#office" data-lang="ru">Пример: офис на 40 человек</a><a href="#office" data-lang="en">Example: a 40-person office</a></li>
+    <li><a href="#l2" data-lang="ru">L2-схема офиса</a><a href="#l2" data-lang="en">L2 diagram of the office</a></li>
+    <li><a href="#l3" data-lang="ru">L3-схема офиса</a><a href="#l3" data-lang="en">L3 diagram of the office</a></li>
+    <li><a href="#tables" data-lang="ru">Таблицы, без которых схема неполная</a><a href="#tables" data-lang="en">Tables without which a diagram is incomplete</a></li>
+    <li><a href="#rules" data-lang="ru">Правила оформления</a><a href="#rules" data-lang="en">Layout rules</a></li>
+    <li><a href="#steps" data-lang="ru">Порядок работы с нуля</a><a href="#steps" data-lang="en">Order of work from scratch</a></li>
+    <li><a href="#tools" data-lang="ru">Инструменты</a><a href="#tools" data-lang="en">Tools</a></li>
+    <li><a href="#mistakes" data-lang="ru">Типичные ошибки</a><a href="#mistakes" data-lang="en">Common mistakes</a></li>
+  </ol></nav>
+
+  <h2 id="why">
+    <span data-lang="ru">Зачем две схемы</span>
+    <span data-lang="en">Why two diagrams</span>
+  </h2>
+  <p data-lang="ru">Схема — рабочий документ, по которому сеть восстанавливают при аварии. При падении линка нужны порт, кабель и VLAN —
+    это L2. При недоступности другого отдела нужны подсеть, шлюз и наличие маршрута — это L3. Совмещение обоих уровней в одном
+    рисунке замедляет поиск и того, и другого.</p>
+  <p data-lang="en">A diagram is a working document used to restore the network during an incident. A downed link calls for port, cable and VLAN —
+    that is L2. An unreachable department calls for subnet, gateway and the presence of a route — that is L3. Merging both layers into
+    one drawing slows down the search for either.</p>
+  <div class="two">
+    <div class="card l2">
+      <h3><span data-lang="ru">L2 — канальный уровень</span><span data-lang="en">L2 — data link layer</span></h3>
+      <ul data-lang="ru"><li>Физические устройства и кабели</li><li>Порты на обоих концах линка</li><li>VLAN: access / trunk</li>
+        <li>Агрегация линков (LACP), STP-корень</li><li>Скорость / среда (1G медь, 10G оптика)</li></ul>
+      <ul data-lang="en"><li>Physical devices and cables</li><li>Ports at both ends of a link</li><li>VLANs: access / trunk</li>
+        <li>Link aggregation (LACP), STP root</li><li>Speed / medium (1G copper, 10G fibre)</li></ul>
+    </div>
+    <div class="card l3">
+      <h3><span data-lang="ru">L3 — сетевой уровень</span><span data-lang="en">L3 — network layer</span></h3>
+      <ul data-lang="ru"><li>Подсети с префиксом (CIDR)</li><li>Роутеры, L3-коммутаторы, файрволы</li><li>IP интерфейсов и шлюзы</li>
+        <li>Маршрутизация: статика, OSPF, BGP</li><li>NAT, VPN, границы зон безопасности</li></ul>
+      <ul data-lang="en"><li>Subnets with prefixes (CIDR)</li><li>Routers, L3 switches, firewalls</li><li>Interface IPs and gateways</li>
+        <li>Routing: static, OSPF, BGP</li><li>NAT, VPN, security zone boundaries</li></ul>
+    </div>
+  </div>
+
+  <h2 id="what">
+    <span data-lang="ru">Что показывать на каждой</span>
+    <span data-lang="en">What belongs on each</span>
+  </h2>
+  <div class="tw" data-lang="ru"><table>
+    <thead><tr><th>Элемент</th><th>L2</th><th>L3</th></tr></thead>
+    <tbody>
+      <tr><td>Коммутатор доступа</td><td>Да, с портами</td><td>Нет (он не маршрутизирует)</td></tr>
+      <tr><td>Коммутатор ядра (L3)</td><td>Да, как свитч</td><td>Да, как роутер с SVI</td></tr>
+      <tr><td>Роутер / файрвол</td><td>Да, только порты</td><td>Да, с IP на каждом интерфейсе</td></tr>
+      <tr><td>Сервер, ПК, точка доступа</td><td>Да, порт + VLAN</td><td>Нет, только его подсеть</td></tr>
+      <tr><td>Номера портов</td><td>Обязательно, с обеих сторон</td><td>Нет</td></tr>
+      <tr><td>VLAN</td><td>На каждом линке</td><td>Как подсеть: «VLAN 10 — 192.168.10.0/24»</td></tr>
+      <tr><td>IP-адреса</td><td>Нет (кроме management)</td><td>Обязательно: интерфейсы и шлюзы</td></tr>
+      <tr><td>Маршруты</td><td>Нет</td><td>Да: default, статика, протокол</td></tr>
+      <tr><td>Интернет / провайдер</td><td>Как «облако» + порт</td><td>Как «облако» + WAN IP и next-hop</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tw" data-lang="en"><table>
+    <thead><tr><th>Element</th><th>L2</th><th>L3</th></tr></thead>
+    <tbody>
+      <tr><td>Access switch</td><td>Yes, with ports</td><td>No (it does not route)</td></tr>
+      <tr><td>Core switch (L3)</td><td>Yes, as a switch</td><td>Yes, as a router with SVIs</td></tr>
+      <tr><td>Router / firewall</td><td>Yes, ports only</td><td>Yes, with an IP on every interface</td></tr>
+      <tr><td>Server, PC, access point</td><td>Yes, port + VLAN</td><td>No, only its subnet</td></tr>
+      <tr><td>Port numbers</td><td>Mandatory, at both ends</td><td>No</td></tr>
+      <tr><td>VLANs</td><td>On every link</td><td>As a subnet: «VLAN 10 — 192.168.10.0/24»</td></tr>
+      <tr><td>IP addresses</td><td>No (except management)</td><td>Mandatory: interfaces and gateways</td></tr>
+      <tr><td>Routes</td><td>No</td><td>Yes: default, static, protocol</td></tr>
+      <tr><td>Internet / ISP</td><td>As a «cloud» + port</td><td>As a «cloud» + WAN IP and next-hop</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note" data-lang="ru">Правило одной фразы: если элемент нельзя объяснить словами «порт» или «VLAN» — ему не место на L2.
+    Если нельзя объяснить словами «подсеть», «IP» или «маршрут» — ему не место на L3.</div>
+  <div class="note" data-lang="en">One-sentence rule: if an element cannot be described with the words «port» or «VLAN», it does not belong on L2.
+    If it cannot be described with «subnet», «IP» or «route», it does not belong on L3.</div>
+
+  <h2 id="legend">
+    <span data-lang="ru">Обозначения</span>
+    <span data-lang="en">Notation</span>
+  </h2>
+  <p data-lang="ru">Строгого стандарта нет. Есть привычные формы (по Cisco), и главное — <b>легенда на самой схеме</b>. Простой рабочий набор:</p>
+  <p data-lang="en">There is no strict standard. There are conventional shapes (following Cisco), and above all a <b>legend on the diagram itself</b>. A simple working set:</p>
+  <div class="dia">
+    <svg viewBox="0 0 800 150" xmlns="http://www.w3.org/2000/svg" aria-label="Legend">
+      <rect x="20" y="20" width="110" height="40" rx="4" class="sw"/><text x="75" y="44" class="name">SW-ACC-1</text>
+      <text x="75" y="80" class="sub" data-lang="ru">коммутатор (L2)</text>
+      <text x="75" y="80" class="sub" data-lang="en">switch (L2)</text>
+      <rect x="150" y="20" width="110" height="40" rx="4" class="rt"/><text x="205" y="44" class="name">SW-CORE</text>
+      <text x="205" y="80" class="sub" data-lang="ru">L3-коммутатор / роутер</text>
+      <text x="205" y="80" class="sub" data-lang="en">L3 switch / router</text>
+      <rect x="280" y="20" width="110" height="40" rx="4" class="fw"/><text x="335" y="44" class="name">FW-1</text>
+      <text x="335" y="80" class="sub" data-lang="ru">файрвол</text>
+      <text x="335" y="80" class="sub" data-lang="en">firewall</text>
+      <rect x="410" y="20" width="110" height="40" rx="4" class="dev"/><text x="465" y="44" class="name">SRV-1</text>
+      <text x="465" y="80" class="sub" data-lang="ru">хост: сервер, ПК, AP</text>
+      <text x="465" y="80" class="sub" data-lang="en">host: server, PC, AP</text>
+      <ellipse cx="595" cy="40" rx="50" ry="20" class="cloud"/><text x="595" y="44" class="name">ISP</text>
+      <text x="595" y="80" class="sub" data-lang="ru">внешняя сеть</text>
+      <text x="595" y="80" class="sub" data-lang="en">external network</text>
+      <rect x="665" y="20" width="115" height="40" rx="10" class="net"/><text x="722" y="44" class="ip">192.168.10.0/24</text>
+      <text x="722" y="80" class="sub" data-lang="ru">подсеть (только L3)</text>
+      <text x="722" y="80" class="sub" data-lang="en">subnet (L3 only)</text>
+      <line x1="30" y1="120" x2="130" y2="120" class="link"/>
+      <text x="80" y="140" class="sub" data-lang="ru">access-линк</text>
+      <text x="80" y="140" class="sub" data-lang="en">access link</text>
+      <line x1="160" y1="120" x2="260" y2="120" class="trunk"/>
+      <text x="210" y="140" class="sub" data-lang="ru">trunk (толще, цвет VLAN)</text>
+      <text x="210" y="140" class="sub" data-lang="en">trunk (thicker, VLAN colour)</text>
+      <line x1="290" y1="116" x2="390" y2="116" class="trunk"/><line x1="290" y1="124" x2="390" y2="124" class="trunk"/>
+      <text x="340" y="140" class="sub" data-lang="ru">LACP / агрегация</text>
+      <text x="340" y="140" class="sub" data-lang="en">LACP / aggregation</text>
+      <text x="470" y="116" class="port">Gi1/0/2</text><text x="470" y="132" class="vl">trunk 10,20,30</text>
+      <text x="470" y="146" class="sub" style="text-anchor:start" data-lang="ru">подпись линка на L2</text>
+      <text x="470" y="146" class="sub" style="text-anchor:start" data-lang="en">link label on L2</text>
+      <text x="640" y="116" class="ip ipl">10.0.0.1/30</text>
+      <text x="640" y="132" class="lbl">default → 10.0.0.1</text>
+      <text x="640" y="146" class="sub" style="text-anchor:start" data-lang="ru">подпись на L3</text>
+      <text x="640" y="146" class="sub" style="text-anchor:start" data-lang="en">label on L3</text>
+    </svg>
+  </div>
+
+  <h2 id="office">
+    <span data-lang="ru">Пример: офис на 40 человек</span>
+    <span data-lang="en">Example: a 40-person office</span>
+  </h2>
+  <p data-lang="ru">Один и тот же офис нарисуем дважды. Исходные данные:</p>
+  <p data-lang="en">The same office drawn twice. Input data:</p>
+  <ul data-lang="ru">
+    <li>Интернет от провайдера, один файрвол <b>FW-1</b> (делает NAT).</li>
+    <li>Коммутатор ядра <b>SW-CORE</b> (L3, на нём шлюзы всех VLAN) и два коммутатора доступа <b>SW-ACC-1</b>, <b>SW-ACC-2</b>.</li>
+    <li>Два сервера в ядре, ПК в отделах, две Wi-Fi точки, принтер.</li>
+    <li>Четыре VLAN: пользователи, серверы, Wi-Fi, управление.</li>
+  </ul>
+  <ul data-lang="en">
+    <li>Internet from the ISP, one firewall <b>FW-1</b> (doing NAT).</li>
+    <li>Core switch <b>SW-CORE</b> (L3, holding the gateways of all VLANs) and two access switches <b>SW-ACC-1</b>, <b>SW-ACC-2</b>.</li>
+    <li>Two servers in the core, PCs in the departments, two Wi-Fi access points, a printer.</li>
+    <li>Four VLANs: users, servers, Wi-Fi, management.</li>
+  </ul>
+
+  <h2 id="l2">
+    <span data-lang="ru">L2-схема офиса</span>
+    <span data-lang="en">L2 diagram of the office</span>
+  </h2>
+  <p data-lang="ru">Смотрим только на кабели, порты и VLAN. IP-адресов здесь нет.</p>
+  <p data-lang="en">Cables, ports and VLANs only. No IP addresses here.</p>
+  <div class="dia">
+    <svg viewBox="0 0 800 520" xmlns="http://www.w3.org/2000/svg" aria-label="L2 diagram">
+      <!-- ISP -->
+      <ellipse cx="400" cy="38" rx="60" ry="22" class="cloud"/><text x="400" y="42" class="name">ISP</text>
+      <!-- FW -->
+      <line x1="400" y1="60" x2="400" y2="100" class="link"/>
+      <text x="408" y="78" class="port">eth0 (WAN)</text>
+      <rect x="340" y="100" width="120" height="44" rx="4" class="fw"/><text x="400" y="126" class="name">FW-1</text>
+      <!-- FW -> CORE -->
+      <line x1="400" y1="144" x2="400" y2="200" class="trunk"/>
+      <text x="408" y="158" class="port">eth1</text>
+      <text x="408" y="172" class="vl">trunk 10,20,30,99</text>
+      <text x="408" y="194" class="port">Gi1/0/1</text>
+      <rect x="340" y="200" width="120" height="44" rx="4" class="rt"/><text x="400" y="220" class="name">SW-CORE</text>
+      <text x="400" y="236" class="sub">STP root</text>
+      <!-- CORE -> ACC-1 -->
+      <line x1="360" y1="244" x2="180" y2="320" class="trunk"/>
+      <text x="300" y="256" class="port" style="text-anchor:end">Gi1/0/2</text>
+      <text x="222" y="302" class="vl" style="text-anchor:end">trunk 10,30,99</text>
+      <text x="210" y="314" class="port">Gi0/24</text>
+      <!-- CORE -> ACC-2 -->
+      <line x1="440" y1="244" x2="620" y2="320" class="trunk"/>
+      <text x="500" y="256" class="port">Gi1/0/3</text>
+      <text x="578" y="302" class="vl">trunk 10,30,99</text>
+      <text x="590" y="314" class="port" style="text-anchor:end">Gi0/24</text>
+      <!-- CORE -> servers -->
+      <line x1="390" y1="244" x2="340" y2="320" class="link"/>
+      <line x1="410" y1="244" x2="460" y2="320" class="link"/>
+      <text x="366" y="272" class="port" style="text-anchor:end">Gi1/0/10</text>
+      <text x="356" y="288" class="vl" style="text-anchor:end">access 20</text>
+      <text x="434" y="272" class="port">Gi1/0/11</text>
+      <text x="444" y="288" class="vl">access 20</text>
+      <text x="352" y="314" class="port">eth0</text>
+      <text x="448" y="314" class="port" style="text-anchor:end">eth0</text>
+      <rect x="290" y="320" width="100" height="40" rx="4" class="dev"/><text x="340" y="344" class="name">SRV-1</text>
+      <rect x="410" y="320" width="100" height="40" rx="4" class="dev"/><text x="460" y="344" class="name">SRV-2</text>
+      <!-- ACC-1 -->
+      <rect x="120" y="320" width="120" height="44" rx="4" class="sw"/><text x="180" y="346" class="name">SW-ACC-1</text>
+      <line x1="150" y1="364" x2="110" y2="440" class="link"/>
+      <line x1="210" y1="364" x2="240" y2="440" class="link"/>
+      <text x="140" y="384" class="port" style="text-anchor:end">Gi0/1–20</text>
+      <text x="136" y="398" class="vl" style="text-anchor:end">access 10</text>
+      <text x="226" y="384" class="port">Gi0/21</text>
+      <text x="230" y="398" class="vl">trunk 30,99</text>
+      <rect x="40" y="440" width="130" height="40" rx="4" class="dev"/>
+      <text x="105" y="458" class="name" data-lang="ru">ПК отдела 1</text>
+      <text x="105" y="458" class="name" data-lang="en">Dept 1 PCs</text>
+      <text x="105" y="472" class="sub">×18</text>
+      <rect x="200" y="440" width="80" height="40" rx="4" class="dev"/><text x="240" y="464" class="name">AP-1</text>
+      <!-- ACC-2 -->
+      <rect x="560" y="320" width="120" height="44" rx="4" class="sw"/><text x="620" y="346" class="name">SW-ACC-2</text>
+      <line x1="590" y1="364" x2="560" y2="440" class="link"/>
+      <line x1="650" y1="364" x2="690" y2="440" class="link"/>
+      <text x="574" y="384" class="port" style="text-anchor:end">Gi0/1–22</text>
+      <text x="570" y="398" class="vl" style="text-anchor:end">access 10</text>
+      <text x="666" y="384" class="port">Gi0/23</text>
+      <text x="670" y="398" class="vl">trunk 30,99</text>
+      <rect x="480" y="440" width="150" height="40" rx="4" class="dev"/>
+      <text x="555" y="458" class="name" data-lang="ru">ПК отдела 2</text>
+      <text x="555" y="458" class="name" data-lang="en">Dept 2 PCs</text>
+      <text x="555" y="472" class="sub" data-lang="ru">×20 + принтер</text>
+      <text x="555" y="472" class="sub" data-lang="en">×20 + printer</text>
+      <rect x="650" y="440" width="80" height="40" rx="4" class="dev"/><text x="690" y="464" class="name">AP-2</text>
+      <!-- legend -->
+      <line x1="30" y1="505" x2="70" y2="505" class="link"/><text x="76" y="509" class="legend">access</text>
+      <line x1="130" y1="505" x2="170" y2="505" class="trunk"/><text x="176" y="509" class="legend">trunk</text>
+      <text x="240" y="509" class="legend" data-lang="ru">Все линки 1G медь. Management VLAN 99 на всех коммутаторах.</text>
+      <text x="240" y="509" class="legend" data-lang="en">All links 1G copper. Management VLAN 99 on every switch.</text>
+      <text x="790" y="509" class="legend" style="text-anchor:end" data-lang="ru">L2 · офис · v1.0 · 2026-09</text>
+      <text x="790" y="509" class="legend" style="text-anchor:end" data-lang="en">L2 · office · v1.0 · 2026-09</text>
+    </svg>
+    <div class="cap" data-lang="ru"><b>Что видно сразу:</b> какой порт на каком конце, где trunk и какие VLAN в нём разрешены, что серверы сидят в access-портах ядра, а точки доступа — в trunk (у них свой VLAN для Wi-Fi и management).</div>
+    <div class="cap" data-lang="en"><b>Readable at a glance:</b> which port sits at which end, where the trunks are and which VLANs they allow, that the servers occupy access ports on the core, and that the access points hang off trunks (they carry their own VLANs for Wi-Fi and management).</div>
+  </div>
+  <p class="zoom" data-lang="ru">На телефоне схему можно прокручивать вбок и увеличивать щипком.</p>
+  <p class="zoom" data-lang="en">On a phone the diagram scrolls sideways and zooms with a pinch.</p>
+
+  <h2 id="l3">
+    <span data-lang="ru">L3-схема офиса</span>
+    <span data-lang="en">L3 diagram of the office</span>
+  </h2>
+  <p data-lang="ru">Та же сеть, но коммутаторы доступа исчезли — они не маршрутизируют. Появились подсети, IP интерфейсов и маршруты.</p>
+  <p data-lang="en">The same network, but the access switches are gone — they do not route. Subnets, interface IPs and routes appear instead.</p>
+  <div class="dia">
+    <svg viewBox="0 0 800 466" xmlns="http://www.w3.org/2000/svg" aria-label="L3 diagram">
+      <ellipse cx="400" cy="38" rx="70" ry="22" class="cloud"/>
+      <text x="400" y="42" class="name" data-lang="ru">Интернет</text>
+      <text x="400" y="42" class="name" data-lang="en">Internet</text>
+      <line x1="400" y1="60" x2="400" y2="110" class="link"/>
+      <text x="410" y="78" class="ip ipl">203.0.113.2/30</text>
+      <text x="410" y="92" class="lbl">next-hop 203.0.113.1</text>
+      <rect x="330" y="110" width="140" height="50" rx="4" class="fw"/>
+      <text x="400" y="131" class="name">FW-1</text><text x="400" y="147" class="sub">NAT · default → ISP</text>
+      <line x1="400" y1="160" x2="400" y2="240" class="link"/>
+      <text x="410" y="178" class="ip ipl">10.0.0.1/30</text>
+      <text x="410" y="200" class="lbl" data-lang="ru">транзитная сеть 10.0.0.0/30</text>
+      <text x="410" y="200" class="lbl" data-lang="en">transit network 10.0.0.0/30</text>
+      <text x="410" y="214" class="lbl">FW: 192.168.0.0/16 → 10.0.0.2</text>
+      <text x="410" y="232" class="ip ipl">10.0.0.2/30</text>
+      <rect x="280" y="240" width="240" height="56" rx="4" class="rt"/>
+      <text x="400" y="262" class="name">SW-CORE (L3)</text>
+      <text x="400" y="280" class="sub" data-lang="ru">default → 10.0.0.1 · SVI = шлюзы VLAN</text>
+      <text x="400" y="280" class="sub" data-lang="en">default → 10.0.0.1 · SVIs = VLAN gateways</text>
+      <!-- subnets -->
+      <line x1="340" y1="296" x2="120" y2="370" class="link"/>
+      <line x1="380" y1="296" x2="310" y2="370" class="link"/>
+      <line x1="420" y1="296" x2="490" y2="370" class="link"/>
+      <line x1="460" y1="296" x2="680" y2="370" class="link"/>
+      <text x="236" y="326" class="ip" style="text-anchor:end">.1</text>
+      <text x="340" y="326" class="ip" style="text-anchor:end">.1</text>
+      <text x="460" y="326" class="ip ipl">.1</text>
+      <text x="572" y="326" class="ip ipl">.1</text>
+      <rect x="30" y="370" width="180" height="64" rx="10" class="net"/>
+      <text x="120" y="390" class="name">VLAN 10 · Users</text>
+      <text x="120" y="408" class="ip">192.168.10.0/24</text>
+      <text x="120" y="424" class="sub">DHCP .100–.250</text>
+      <rect x="220" y="370" width="180" height="64" rx="10" class="net"/>
+      <text x="310" y="390" class="name">VLAN 20 · Servers</text>
+      <text x="310" y="408" class="ip">192.168.20.0/24</text>
+      <text x="310" y="424" class="sub">SRV-1 .10 · SRV-2 .11</text>
+      <rect x="410" y="370" width="180" height="64" rx="10" class="net"/>
+      <text x="500" y="390" class="name">VLAN 30 · Wi-Fi</text>
+      <text x="500" y="408" class="ip">192.168.30.0/24</text>
+      <text x="500" y="424" class="sub">DHCP .50–.250</text>
+      <rect x="600" y="370" width="180" height="64" rx="10" class="net"/>
+      <text x="690" y="390" class="name">VLAN 99 · Mgmt</text>
+      <text x="690" y="408" class="ip">192.168.99.0/24</text>
+      <text x="690" y="424" class="sub" data-lang="ru">свитчи .2–.9, AP .20–.29</text>
+      <text x="690" y="424" class="sub" data-lang="en">switches .2–.9, APs .20–.29</text>
+      <text x="30" y="454" class="legend" data-lang="ru">Шлюз каждой подсети — .1 на SW-CORE. Между VLAN маршрутизирует ядро, в интернет — FW-1 с NAT.</text>
+      <text x="30" y="454" class="legend" data-lang="en">Each subnet's gateway is .1 on SW-CORE. The core routes between VLANs; FW-1 with NAT handles the internet.</text>
+      <text x="790" y="454" class="legend" style="text-anchor:end">L3 · v1.0 · 2026-09</text>
+    </svg>
+    <div class="cap" data-lang="ru"><b>Что видно сразу:</b> четыре подсети и их шлюзы, транзитная сеть между ядром и файрволом, кто держит default-маршрут, где NAT. Вопрос «почему из VLAN 10 нет доступа к SRV-1» решается взглядом: путь идёт через SW-CORE, значит проверять ACL на нём.</div>
+    <div class="cap" data-lang="en"><b>Readable at a glance:</b> four subnets and their gateways, the transit network between core and firewall, who holds the default route, where NAT happens. The question «why does VLAN 10 have no access to SRV-1» is answered by looking: the path runs through SW-CORE, so its ACLs are what to check.</div>
+  </div>
+
+  <h2 id="tables">
+    <span data-lang="ru">Таблицы, без которых схема неполная</span>
+    <span data-lang="en">Tables without which a diagram is incomplete</span>
+  </h2>
+  <p data-lang="ru">Схема даёт картину, таблицы — точность. Держи их рядом со схемой (в том же файле или на второй странице).</p>
+  <p data-lang="en">The diagram gives the picture, the tables give precision. Keep them next to the diagram (in the same file or on a second page).</p>
+
+  <h3><span data-lang="ru">План VLAN и адресации</span><span data-lang="en">VLAN and addressing plan</span></h3>
+  <div class="tw"><table>
+    <thead>
+      <tr data-lang="ru"><th>VLAN</th><th>Имя</th><th>Подсеть</th><th>Шлюз</th><th>DHCP</th><th>Назначение</th></tr>
+      <tr data-lang="en"><th>VLAN</th><th>Name</th><th>Subnet</th><th>Gateway</th><th>DHCP</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>10</td><td>Users</td><td class="mono">192.168.10.0/24</td><td class="mono">.1</td><td class="mono">.100–.250</td>
+        <td><span data-lang="ru">ПК, принтеры</span><span data-lang="en">PCs, printers</span></td></tr>
+      <tr><td>20</td><td>Servers</td><td class="mono">192.168.20.0/24</td><td class="mono">.1</td>
+        <td><span data-lang="ru">нет</span><span data-lang="en">none</span></td>
+        <td><span data-lang="ru">серверы, статика</span><span data-lang="en">servers, static</span></td></tr>
+      <tr><td>30</td><td>WiFi</td><td class="mono">192.168.30.0/24</td><td class="mono">.1</td><td class="mono">.50–.250</td>
+        <td><span data-lang="ru">беспроводные клиенты</span><span data-lang="en">wireless clients</span></td></tr>
+      <tr><td>99</td><td>Mgmt</td><td class="mono">192.168.99.0/24</td><td class="mono">.1</td>
+        <td><span data-lang="ru">нет</span><span data-lang="en">none</span></td>
+        <td><span data-lang="ru">управление свитчами, AP</span><span data-lang="en">switch and AP management</span></td></tr>
+      <tr><td>—</td><td>Transit</td><td class="mono">10.0.0.0/30</td><td>—</td>
+        <td><span data-lang="ru">нет</span><span data-lang="en">none</span></td>
+        <td class="mono">FW-1 .1 ↔ SW-CORE .2</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3><span data-lang="ru">Карта портов (фрагмент для SW-CORE)</span><span data-lang="en">Port map (excerpt for SW-CORE)</span></h3>
+  <div class="tw"><table>
+    <thead>
+      <tr data-lang="ru"><th>Порт</th><th>Куда</th><th>Удалённый порт</th><th>Режим</th><th>VLAN</th></tr>
+      <tr data-lang="en"><th>Port</th><th>To</th><th>Remote port</th><th>Mode</th><th>VLAN</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="mono">Gi1/0/1</td><td>FW-1</td><td class="mono">eth1</td><td>trunk</td><td>10,20,30,99</td></tr>
+      <tr><td class="mono">Gi1/0/2</td><td>SW-ACC-1</td><td class="mono">Gi0/24</td><td>trunk</td><td>10,30,99</td></tr>
+      <tr><td class="mono">Gi1/0/3</td><td>SW-ACC-2</td><td class="mono">Gi0/24</td><td>trunk</td><td>10,30,99</td></tr>
+      <tr><td class="mono">Gi1/0/10</td><td>SRV-1</td><td class="mono">eth0</td><td>access</td><td>20</td></tr>
+      <tr><td class="mono">Gi1/0/11</td><td>SRV-2</td><td class="mono">eth0</td><td>access</td><td>20</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3><span data-lang="ru">Таблица устройств</span><span data-lang="en">Device table</span></h3>
+  <div class="tw"><table>
+    <thead>
+      <tr data-lang="ru"><th>Имя</th><th>Роль</th><th>Модель</th><th>Mgmt IP</th><th>Где стоит</th></tr>
+      <tr data-lang="en"><th>Name</th><th>Role</th><th>Model</th><th>Mgmt IP</th><th>Location</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="mono">FW-1</td>
+        <td><span data-lang="ru">файрвол, NAT</span><span data-lang="en">firewall, NAT</span></td>
+        <td>…</td><td class="mono">192.168.99.1*</td>
+        <td><span data-lang="ru">серверная, стойка 1, U40</span><span data-lang="en">server room, rack 1, U40</span></td></tr>
+      <tr><td class="mono">SW-CORE</td>
+        <td><span data-lang="ru">ядро, L3</span><span data-lang="en">core, L3</span></td>
+        <td>…</td><td class="mono">192.168.99.2</td>
+        <td><span data-lang="ru">серверная, стойка 1, U38</span><span data-lang="en">server room, rack 1, U38</span></td></tr>
+      <tr><td class="mono">SW-ACC-1</td>
+        <td><span data-lang="ru">доступ</span><span data-lang="en">access</span></td>
+        <td>…</td><td class="mono">192.168.99.3</td>
+        <td><span data-lang="ru">шкаф, этаж 1</span><span data-lang="en">cabinet, floor 1</span></td></tr>
+      <tr><td class="mono">SW-ACC-2</td>
+        <td><span data-lang="ru">доступ</span><span data-lang="en">access</span></td>
+        <td>…</td><td class="mono">192.168.99.4</td>
+        <td><span data-lang="ru">шкаф, этаж 2</span><span data-lang="en">cabinet, floor 2</span></td></tr>
+    </tbody>
+  </table></div>
+  <p style="font-size:14px;color:var(--ink-soft)" data-lang="ru">* На FW-1 management может быть и через транзитную сеть — зависит от модели. Главное, чтобы это было записано.</p>
+  <p style="font-size:14px;color:var(--ink-soft)" data-lang="en">* On FW-1 management may run through the transit network instead — it depends on the model. What matters is that it is written down.</p>
+
+  <h2 id="rules">
+    <span data-lang="ru">Правила оформления</span>
+    <span data-lang="en">Layout rules</span>
+  </h2>
+  <ol data-lang="ru">
+    <li><b>Поток сверху вниз.</b> Интернет сверху, ядро посередине, доступ и хосты внизу. Читатель находит границу сети за секунду.</li>
+    <li><b>Имена устройств, а не модели.</b> <code>SW-ACC-1</code> говорит роль и место. Модель — в таблице.</li>
+    <li><b>Подпись линка — у обоих концов.</b> Порт со стороны A и порт со стороны B. Одна подпись «Gi0/24» посередине — это половина информации.</li>
+    <li><b>Линии не пересекаются.</b> Если пересеклись — переставь блоки. Пересечение читается как соединение.</li>
+    <li><b>Один цвет — один смысл.</b> Например: фиолетовый — trunk, чёрный — access. Не раскрашивай «для красоты».</li>
+    <li><b>Одинаковое повторяется группой.</b> 18 ПК — один блок «ПК ×18», а не 18 квадратиков.</li>
+    <li><b>Легенда, версия, дата — на самой схеме.</b> В углу. Схема без даты через год вводит в заблуждение.</li>
+    <li><b>L2 и L3 — отдельные листы</b> одного файла, с одинаковыми именами устройств.</li>
+    <li><b>Одна схема — один экран.</b> Не помещается — дели по площадкам или по этажам, а общую делай с уровнем «здание = блок».</li>
+  </ol>
+  <ol data-lang="en">
+    <li><b>Flow top to bottom.</b> Internet at the top, core in the middle, access and hosts at the bottom. The reader finds the network edge in a second.</li>
+    <li><b>Device names, not models.</b> <code>SW-ACC-1</code> states the role and the place. The model goes in the table.</li>
+    <li><b>Label a link at both ends.</b> The port on side A and the port on side B. A single «Gi0/24» in the middle is half the information.</li>
+    <li><b>Lines do not cross.</b> If they cross, rearrange the blocks. A crossing reads as a connection.</li>
+    <li><b>One colour, one meaning.</b> For instance: purple for trunk, black for access. Do not colour things «for looks».</li>
+    <li><b>Identical things go in a group.</b> 18 PCs is one block «PCs ×18», not 18 little squares.</li>
+    <li><b>Legend, version and date on the diagram itself.</b> In a corner. A year later, an undated diagram misleads.</li>
+    <li><b>L2 and L3 as separate sheets</b> of one file, with identical device names.</li>
+    <li><b>One diagram, one screen.</b> If it does not fit, split by site or by floor and make the overview at the level of «building = block».</li>
+  </ol>
+
+  <h2 id="steps">
+    <span data-lang="ru">Порядок работы с нуля</span>
+    <span data-lang="en">Order of work from scratch</span>
+  </h2>
+  <ol data-lang="ru">
+    <li><b>Инвентаризация.</b> Список устройств: имя, роль, модель, где стоит. Хотя бы в таблице.</li>
+    <li><b>Соединения.</b> Для каждого кабеля — два порта. Собирается из <code>show cdp/lldp neighbors</code> или обходом ногами.</li>
+    <li><b>VLAN.</b> Какие есть, где access, где trunk. Из <code>show vlan</code>, <code>show interfaces trunk</code>.</li>
+    <li><b>Рисуем L2.</b> Сначала ядро, потом уровень доступа, потом хосты группами. Подписываем порты и VLAN.</li>
+    <li><b>План адресации.</b> Каждому VLAN — подсеть, шлюз, диапазон DHCP (см. шпаргалку по разбиению сетей).</li>
+    <li><b>Рисуем L3.</b> Только маршрутизаторы, подсети и IP. Отмечаем default-маршрут и NAT.</li>
+    <li><b>Проверка с другим человеком.</b> Дай схему коллеге и попроси ответить: «как трафик от ПК отдела 1 доходит до SRV-2?». Если отвечает по схеме за минуту — готово.</li>
+  </ol>
+  <ol data-lang="en">
+    <li><b>Inventory.</b> A list of devices: name, role, model, location. A table is enough.</li>
+    <li><b>Connections.</b> Two ports for every cable. Collected from <code>show cdp/lldp neighbors</code> or by walking the site.</li>
+    <li><b>VLANs.</b> Which exist, where access, where trunk. From <code>show vlan</code>, <code>show interfaces trunk</code>.</li>
+    <li><b>Draw L2.</b> Core first, then the access layer, then hosts in groups. Label ports and VLANs.</li>
+    <li><b>Addressing plan.</b> A subnet, gateway and DHCP range per VLAN (see the subnetting cheat sheet).</li>
+    <li><b>Draw L3.</b> Routers, subnets and IPs only. Mark the default route and NAT.</li>
+    <li><b>Review with another person.</b> Hand the diagram to a colleague and ask them to answer: «how does traffic from a dept 1 PC reach SRV-2?». If they answer from the diagram within a minute, it is done.</li>
+  </ol>
+
+  <h2 id="tools">
+    <span data-lang="ru">Инструменты</span>
+    <span data-lang="en">Tools</span>
+  </h2>
+  <ul data-lang="ru">
+    <li><b>draw.io (diagrams.net)</b> — бесплатно, работает офлайн, есть библиотеки сетевых иконок, слои для L2/L3 в одном файле. Самый разумный выбор по умолчанию.</li>
+    <li><b>Excalidraw</b> — быстрые наброски «от руки», удобно для обсуждения до чистовика.</li>
+    <li><b>Microsoft Visio</b> — корпоративный стандарт, если он уже есть в компании.</li>
+    <li><b>NetBox</b> — не рисовалка, а база: устройства, порты, кабели, IP. Схемы из него можно генерировать, и они не устаревают.</li>
+  </ul>
+  <ul data-lang="en">
+    <li><b>draw.io (diagrams.net)</b> — free, works offline, has network icon libraries and layers for L2/L3 in one file. The sensible default.</li>
+    <li><b>Excalidraw</b> — quick hand-drawn sketches, useful for discussion before the clean version.</li>
+    <li><b>Microsoft Visio</b> — the corporate standard, if the company already has it.</li>
+    <li><b>NetBox</b> — not a drawing tool but a database: devices, ports, cables, IPs. Diagrams can be generated from it and they do not go stale.</li>
+  </ul>
+  <p data-lang="ru">Формат хранения: исходник (.drawio / .vsdx) + экспорт в PDF или PNG рядом. Исходник — в git или в общей папке с версионированием.</p>
+  <p data-lang="en">Storage format: the source file (.drawio / .vsdx) plus a PDF or PNG export next to it. Keep the source in git or in a shared folder with versioning.</p>
+
+  <h2 id="mistakes">
+    <span data-lang="ru">Типичные ошибки</span>
+    <span data-lang="en">Common mistakes</span>
+  </h2>
+  <div data-lang="ru">
+    <div class="bad"><b>IP на L2-схеме, порты на L3.</b> Получается перегруженный рисунок, где важное тонет. Разделяй.</div>
+    <div class="bad"><b>Линк без портов.</b> «SW-CORE — SW-ACC-1» и всё. Ночью, с фонариком, у шкафа, это бесполезно.</div>
+    <div class="bad"><b>Trunk без списка VLAN.</b> Половина проблем «VLAN не проходит» — это VLAN, не разрешённый в trunk. На схеме это должно быть видно.</div>
+    <div class="bad"><b>Схема не обновляется.</b> Изменил порт — обнови схему в тот же день. Иначе через месяц ей никто не верит, и она мертва.</div>
+    <div class="bad"><b>Уровни доступа на L3.</b> Свитчи доступа на L3-схеме создают иллюзию, что они маршрутизируют. Если это чистый L2 — их там нет.</div>
+    <div class="bad"><b>Одинаковые имена для разных вещей.</b> «Switch1» на схеме, «sw-office» в hostname, «Cisco 2960» в таблице. Имя одно везде.</div>
+  </div>
+  <div data-lang="en">
+    <div class="bad"><b>IPs on the L2 diagram, ports on the L3 one.</b> The result is an overloaded drawing where what matters drowns. Separate them.</div>
+    <div class="bad"><b>A link without ports.</b> «SW-CORE — SW-ACC-1» and nothing else. At night, with a torch, in front of the cabinet, that is useless.</div>
+    <div class="bad"><b>A trunk without its VLAN list.</b> Half of all «the VLAN does not pass» problems are a VLAN not allowed on the trunk. The diagram has to show it.</div>
+    <div class="bad"><b>The diagram is not kept up to date.</b> Changed a port — update the diagram the same day. Otherwise nobody trusts it a month later and it is dead.</div>
+    <div class="bad"><b>Access switches on L3.</b> Access switches on an L3 diagram create the illusion that they route. If they are pure L2, they do not belong there.</div>
+    <div class="bad"><b>The same thing named differently.</b> «Switch1» on the diagram, «sw-office» in the hostname, «Cisco 2960» in the table. One name everywhere.</div>
+  </div>
+
+</main>
+<script>
+(function(){
+  const TITLES = {ru:'Как рисовать L2- и L3-схемы сети', en:'Drawing L2 and L3 network diagrams'};
+
+  let lang = (()=>{
+    const q = new URLSearchParams(location.search).get('lang');
+    if(TITLES[q]) return q;
+    try{ const s = localStorage.getItem('lang'); if(TITLES[s]) return s; }catch(e){}
+    return (navigator.language||'').toLowerCase().startsWith('ru') ? 'ru' : 'en';
+  })();
+
+  function applyLang(){
+    document.documentElement.lang = lang;   // CSS скрывает неактивный язык, в т.ч. в SVG
+    document.title = TITLES[lang];
+    document.querySelectorAll('#lang button').forEach(b=>{
+      b.setAttribute('aria-pressed', String(b.dataset.langBtn === lang));
+    });
+  }
+
+  document.getElementById('lang').addEventListener('click', e=>{
+    const b = e.target.closest('button');
+    if(!b || b.dataset.langBtn === lang) return;
+    lang = b.dataset.langBtn;
+    try{ localStorage.setItem('lang', lang); }catch(e){}
+    applyLang();
+  });
+
+  document.querySelectorAll('nav.toc a[href^="#"]').forEach(a=>{
+    a.addEventListener('click',e=>{
+      e.preventDefault();
+      const t=document.getElementById(a.getAttribute('href').slice(1));
+      if(t) t.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+  });
+
+  applyLang();
+})();
+</script>
+</body>
+</html>

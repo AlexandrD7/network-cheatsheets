@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Как считать и делить сети вручную</title>
+<style>
+  :root{
+    --paper:#fbfbf8; --grid:#e6e8e2; --ink:#1d2433; --ink-soft:#5b6472;
+    --marker:#1f5fbf; --marker-soft:#dce8fa; --line:#2a2f3a; --warn:#b84a1f; --warn-soft:#fbe9e0;
+    --ok:#1f7a4d; --ok-soft:#dff3e8;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--paper);color:var(--ink);
+    font:16px/1.55 "Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+  body{background-image:linear-gradient(var(--grid) 1px,transparent 1px),
+       linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px}
+  main{max-width:820px;margin:0 auto;padding:32px 20px 80px}
+  h1{font-size:30px;font-weight:600;letter-spacing:-.01em;margin:0 0 8px;line-height:1.2}
+  h2{font-size:22px;font-weight:600;margin:52px 0 14px;padding-top:14px;border-top:2.5px solid var(--line)}
+  h3{font-size:17px;font-weight:600;margin:26px 0 8px}
+  p{margin:0 0 12px;max-width:72ch}
+  .lead{color:var(--ink-soft);margin-bottom:20px}
+  a{color:var(--marker)}
+  code,.mono{font-family:ui-monospace,"JetBrains Mono","Cascadia Mono",Consolas,monospace}
+  code{background:#fff;border:1px solid var(--grid);border-radius:3px;padding:0 4px;font-size:.94em}
+  nav.toc{background:#fff;border:2.5px solid var(--line);border-radius:3px;padding:12px 16px;margin:0 0 8px}
+  nav.toc ol{margin:0;padding-left:22px}
+  nav.toc li{margin:3px 0}
+
+  /* переключатель языка */
+  html[lang="ru"] [data-lang="en"],
+  html[lang="en"] [data-lang="ru"]{display:none !important}
+  .top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+  .lang{display:flex;flex:0 0 auto;border:2px solid var(--line);border-radius:4px;overflow:hidden;margin-top:4px}
+  .lang button{font:inherit;font-size:13px;font-weight:600;padding:5px 11px;border:0;
+    background:#fff;color:var(--ink-soft);cursor:pointer}
+  .lang button+button{border-left:2px solid var(--line)}
+  .lang button:hover{background:var(--marker-soft)}
+  .lang button[aria-pressed="true"]{background:var(--line);color:#fff}
+  .lang button:focus-visible{outline:3px solid var(--marker);outline-offset:-3px}
+
+  /* карточки с примерами */
+  .ex{background:#fff;border:2.5px solid var(--line);border-radius:3px;padding:16px 18px;margin:16px 0}
+  .ex .task{font-weight:600;margin-bottom:10px}
+  .ex ol{padding-left:22px;margin:0 0 8px}
+  .ex li{margin:6px 0}
+  .ex li b.mark{color:var(--marker)}
+  .answer{border-left:5px solid var(--marker);background:var(--marker-soft);padding:8px 12px;margin-top:10px;
+    border-radius:0 3px 3px 0}
+  .answer .mono{white-space:pre-wrap;display:block;font-size:15px}
+  .note{border-left:5px solid var(--ok);background:var(--ok-soft);padding:8px 12px;margin:12px 0;border-radius:0 3px 3px 0}
+  .bad{border-left:5px solid var(--warn);background:var(--warn-soft);padding:8px 12px;margin:12px 0;border-radius:0 3px 3px 0}
+
+  /* таблицы */
+  .tw{overflow-x:auto;margin:12px 0}
+  table{border-collapse:collapse;background:#fff;border:2.5px solid var(--line);font-size:15px;min-width:100%}
+  th,td{padding:6px 10px;border-bottom:1px solid var(--grid);white-space:nowrap;text-align:left}
+  th{background:var(--paper);border-bottom:2.5px solid var(--line);font-weight:600}
+  td.n,th.n{text-align:right}
+  tr.hl td{background:var(--marker-soft)}
+
+  /* калькулятор */
+  .calc{background:#fff;border:2.5px solid var(--line);border-radius:3px;padding:16px 18px;margin:16px 0}
+  .calc .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
+  .calc input{font:inherit;padding:8px 10px;border:2px solid var(--line);border-radius:4px;background:#fff;width:230px}
+  .calc input:focus{outline:3px solid var(--marker-soft);border-color:var(--marker)}
+  .calc button{font:inherit;padding:8px 14px;border:2px solid var(--line);background:#fff;border-radius:4px;cursor:pointer;color:var(--ink)}
+  .calc button:hover{background:var(--marker-soft)}
+  .calc .out{display:grid;grid-template-columns:max-content 1fr;gap:4px 16px;font-size:15px}
+  .calc .out .k{color:var(--ink-soft)}
+  .calc .err{color:var(--warn)}
+  .calc .steps{margin-top:10px;font-size:14px;color:var(--ink-soft)}
+
+  .divider{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+  .divider .seg{flex:1 1 60px;border:2px solid var(--line);background:#fff;padding:6px 4px;text-align:center;font-size:13px;border-radius:3px}
+  .divider .seg b{display:block;font-size:15px;color:var(--marker)}
+
+  @media (max-width:640px){
+    html,body{font-size:15px}
+    main{padding:20px 12px 60px}
+    h1{font-size:24px} h2{font-size:19px;margin-top:40px}
+    .ex,.calc{padding:12px 12px}
+    .calc input{width:100%}
+    .calc .out{grid-template-columns:1fr}
+    .calc .out .k{margin-top:6px}
+    .divider .seg{flex-basis:44%}
+    table{font-size:13px}
+  }
+  @media print{body{background:#fff} nav.toc,.calc,.lang{display:none}}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <h1>
+      <span data-lang="ru">Как считать и делить сети вручную</span>
+      <span data-lang="en">Subnet math by hand</span>
+    </h1>
+    <div class="lang" id="lang">
+      <button type="button" data-lang-btn="ru" aria-pressed="true">RU</button>
+      <button type="button" data-lang-btn="en" aria-pressed="false">EN</button>
+    </div>
+  </div>
+  <p class="lead" data-lang="ru">Определение адреса сети, broadcast и диапазона хостов по префиксу — через размер блока,
+    без перевода адреса в двоичный вид. Далее: таблица шагов для последнего октета, пять типовых задач и калькулятор для сверки результата.</p>
+  <p class="lead" data-lang="en">Deriving the network address, broadcast and host range from a prefix using block size,
+    without converting the address to binary. Below: the step table for the last octet, five standard tasks, and a calculator to verify the result.</p>
+
+  <nav class="toc"><ol>
+    <li><a href="#idea" data-lang="ru">Единственное, что надо понять</a><a href="#idea" data-lang="en">The only thing you need to grasp</a></li>
+    <li><a href="#table" data-lang="ru">Таблица, которую держат в голове</a><a href="#table" data-lang="en">The table people keep in their head</a></li>
+    <li><a href="#ex1" data-lang="ru">Пример 1. Какой сети принадлежит адрес</a><a href="#ex1" data-lang="en">Example 1. Which network an address belongs to</a></li>
+    <li><a href="#ex2" data-lang="ru">Пример 2. Разделить сеть на равные части</a><a href="#ex2" data-lang="en">Example 2. Split a network into equal parts</a></li>
+    <li><a href="#ex3" data-lang="ru">Пример 3. Подсети разного размера</a><a href="#ex3" data-lang="en">Example 3. Subnets of different sizes</a></li>
+    <li><a href="#ex4" data-lang="ru">Пример 4. Маска в третьем октете</a><a href="#ex4" data-lang="en">Example 4. Mask in the third octet</a></li>
+    <li><a href="#ex5" data-lang="ru">Пример 5. Сколько хостов → какая маска</a><a href="#ex5" data-lang="en">Example 5. Host count → which mask</a></li>
+    <li><a href="#calc" data-lang="ru">Калькулятор для проверки</a><a href="#calc" data-lang="en">Calculator to check yourself</a></li>
+    <li><a href="#mistakes" data-lang="ru">Типичные ошибки</a><a href="#mistakes" data-lang="en">Common mistakes</a></li>
+  </ol></nav>
+
+  <!-- ============ 1 ============ -->
+  <h2 id="idea">
+    <span data-lang="ru">Единственное, что надо понять</span>
+    <span data-lang="en">The only thing you need to grasp</span>
+  </h2>
+  <p data-lang="ru">Адрес IPv4 — это четыре числа от 0 до 255 (<b>октеты</b>). Префикс <code>/N</code> говорит, сколько бит слева
+    зафиксированы за сетью. Всё, что справа, — адреса внутри неё.</p>
+  <p data-lang="en">An IPv4 address is four numbers from 0 to 255 (<b>octets</b>). The prefix <code>/N</code> says how many bits
+    on the left are fixed as the network. Everything to the right of them is addresses inside it.</p>
+  <p data-lang="ru">Но думать битами не нужно. Нужно знать только <b>шаг блока</b>: на сколько адресов сети идут «нарезкой».
+    Шаг всегда степень двойки, и сети всегда начинаются с адреса, кратного шагу.</p>
+  <p data-lang="en">But you don't have to think in bits. All you need is the <b>block step</b>: the interval at which networks
+    are sliced off. The step is always a power of two, and a network always starts at an address that is a multiple of the step.</p>
+
+  <div class="divider">
+    <div class="seg">/24<b>256</b></div>
+    <div class="seg">/25<b>128</b></div>
+    <div class="seg">/26<b>64</b></div>
+    <div class="seg">/27<b>32</b></div>
+    <div class="seg">/28<b>16</b></div>
+    <div class="seg">/29<b>8</b></div>
+    <div class="seg">/30<b>4</b></div>
+  </div>
+  <p data-lang="ru">Каждый следующий префикс — шаг вдвое меньше. Это вся математика.</p>
+  <p data-lang="en">Each next prefix halves the step. That is the whole of the math.</p>
+
+  <div class="note" data-lang="ru">
+    <b>Три правила, которые всегда работают:</b><br>
+    1. Сеть начинается с числа, кратного шагу: 0, 64, 128, 192 для шага 64.<br>
+    2. Broadcast = начало следующей сети − 1.<br>
+    3. Хостов = шаг − 2 (первый адрес — сеть, последний — broadcast).
+  </div>
+  <div class="note" data-lang="en">
+    <b>Three rules that always hold:</b><br>
+    1. A network starts at a multiple of the step: 0, 64, 128, 192 for a step of 64.<br>
+    2. Broadcast = start of the next network − 1.<br>
+    3. Hosts = step − 2 (the first address is the network, the last is the broadcast).
+  </div>
+
+  <!-- ============ 2 ============ -->
+  <h2 id="table">
+    <span data-lang="ru">Таблица, которую держат в голове</span>
+    <span data-lang="en">The table people keep in their head</span>
+  </h2>
+  <p data-lang="ru">Для последнего октета. Строка <code>/24</code> — «вся сеть целиком», строки ниже — как её нарезать.</p>
+  <p data-lang="en">For the last octet. The <code>/24</code> row is «the whole network», the rows below show how to slice it.</p>
+  <div class="tw"><table>
+    <thead>
+      <tr data-lang="ru"><th>Префикс</th><th>Маска</th><th class="n">Шаг</th><th class="n">Хостов</th><th>Начала сетей (последний октет)</th></tr>
+      <tr data-lang="en"><th>Prefix</th><th>Mask</th><th class="n">Step</th><th class="n">Hosts</th><th>Network starts (last octet)</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="mono">/24</td><td class="mono">255.255.255.0</td><td class="n">256</td><td class="n">254</td><td>0</td></tr>
+      <tr><td class="mono">/25</td><td class="mono">255.255.255.128</td><td class="n">128</td><td class="n">126</td><td>0, 128</td></tr>
+      <tr><td class="mono">/26</td><td class="mono">255.255.255.192</td><td class="n">64</td><td class="n">62</td><td>0, 64, 128, 192</td></tr>
+      <tr><td class="mono">/27</td><td class="mono">255.255.255.224</td><td class="n">32</td><td class="n">30</td><td>0, 32, 64, 96, 128, 160, 192, 224</td></tr>
+      <tr><td class="mono">/28</td><td class="mono">255.255.255.240</td><td class="n">16</td><td class="n">14</td><td>0, 16, 32, … 240</td></tr>
+      <tr><td class="mono">/29</td><td class="mono">255.255.255.248</td><td class="n">8</td><td class="n">6</td><td>0, 8, 16, … 248</td></tr>
+      <tr><td class="mono">/30</td><td class="mono">255.255.255.252</td><td class="n">4</td><td class="n">2</td><td>0, 4, 8, … 252</td></tr>
+      <tr><td class="mono">/31</td><td class="mono">255.255.255.254</td><td class="n">2</td><td class="n">2*</td><td>0, 2, 4, … 254</td></tr>
+      <tr><td class="mono">/32</td><td class="mono">255.255.255.255</td><td class="n">1</td><td class="n">1*</td>
+        <td><span data-lang="ru">любой адрес</span><span data-lang="en">any address</span></td></tr>
+    </tbody>
+  </table></div>
+  <p style="font-size:14px;color:var(--ink-soft)" data-lang="ru">* /31 — линк «точка-точка» между двумя роутерами (оба адреса используются), /32 — один хост (loopback, маршрут на конкретный адрес).</p>
+  <p style="font-size:14px;color:var(--ink-soft)" data-lang="en">* /31 is a point-to-point link between two routers (both addresses are used), /32 is a single host (loopback, a route to one specific address).</p>
+  <p data-lang="ru">Есть подсказка, если таблицу забыл: <b>шаг = 256 − последнее число маски</b>. Маска <code>255.255.255.224</code> → 256 − 224 = 32.</p>
+  <p data-lang="en">A shortcut if you forgot the table: <b>step = 256 − the last number of the mask</b>. Mask <code>255.255.255.224</code> → 256 − 224 = 32.</p>
+
+  <!-- ============ 3 ============ -->
+  <h2 id="ex1">
+    <span data-lang="ru">Пример 1. Какой сети принадлежит адрес</span>
+    <span data-lang="en">Example 1. Which network an address belongs to</span>
+  </h2>
+  <div class="ex" data-lang="ru">
+    <div class="task">На сервере адрес <span class="mono">192.168.10.77/26</span>. Какая это сеть, какой broadcast, какие адреса можно выдавать соседям?</div>
+    <ol>
+      <li><b class="mark">Шаг.</b> /26 → шаг 64.</li>
+      <li><b class="mark">Начала сетей:</b> 0, 64, 128, 192.</li>
+      <li><b class="mark">Где 77?</b> Между 64 и 128 → сеть начинается с <b>64</b>.</li>
+      <li><b class="mark">Broadcast:</b> следующая сеть 128, минус 1 → <b>127</b>.</li>
+      <li><b class="mark">Хосты:</b> от 65 до 126, всего 62.</li>
+    </ol>
+    <div class="answer"><span class="mono">Сеть       192.168.10.64/26
+Broadcast  192.168.10.127
+Хосты      192.168.10.65 – 192.168.10.126  (62 шт.)</span></div>
+  </div>
+  <div class="ex" data-lang="en">
+    <div class="task">A server has the address <span class="mono">192.168.10.77/26</span>. What network is it, what is the broadcast, and which addresses can its neighbours get?</div>
+    <ol>
+      <li><b class="mark">Step.</b> /26 → step 64.</li>
+      <li><b class="mark">Network starts:</b> 0, 64, 128, 192.</li>
+      <li><b class="mark">Where does 77 fall?</b> Between 64 and 128 → the network starts at <b>64</b>.</li>
+      <li><b class="mark">Broadcast:</b> next network is 128, minus 1 → <b>127</b>.</li>
+      <li><b class="mark">Hosts:</b> 65 through 126, 62 in total.</li>
+    </ol>
+    <div class="answer"><span class="mono">Network    192.168.10.64/26
+Broadcast  192.168.10.127
+Hosts      192.168.10.65 – 192.168.10.126  (62 total)</span></div>
+  </div>
+  <p data-lang="ru">Тот же приём для любого адреса: смотришь только на тот октет, где «работает» маска, остальные переписываешь как есть.</p>
+  <p data-lang="en">The same trick works for any address: look only at the octet where the mask «works», and copy the rest as they are.</p>
+
+  <!-- ============ 4 ============ -->
+  <h2 id="ex2">
+    <span data-lang="ru">Пример 2. Разделить сеть на равные части</span>
+    <span data-lang="en">Example 2. Split a network into equal parts</span>
+  </h2>
+  <div class="ex" data-lang="ru">
+    <div class="task">Есть <span class="mono">10.20.30.0/24</span>. Нужно 4 одинаковые подсети — под 4 отдела.</div>
+    <ol>
+      <li><b class="mark">Сколько раз делить пополам?</b> 2 → 4 → значит два деления: /24 → /25 → /26.</li>
+      <li><b class="mark">Шаг</b> для /26 — 64.</li>
+      <li><b class="mark">Выписываем</b> начала: 0, 64, 128, 192. Конец каждой — начало следующей минус 1.</li>
+    </ol>
+    <div class="answer"><span class="mono">10.20.30.0/26     .0   – .63    хосты .1  – .62
+10.20.30.64/26    .64  – .127   хосты .65 – .126
+10.20.30.128/26   .128 – .191   хосты .129 – .190
+10.20.30.192/26   .192 – .255   хосты .193 – .254</span></div>
+  </div>
+  <div class="ex" data-lang="en">
+    <div class="task">You have <span class="mono">10.20.30.0/24</span>. You need 4 equal subnets — one per department.</div>
+    <ol>
+      <li><b class="mark">How many times to halve?</b> 2 → 4 → so two splits: /24 → /25 → /26.</li>
+      <li><b class="mark">The step</b> for /26 is 64.</li>
+      <li><b class="mark">Write out</b> the starts: 0, 64, 128, 192. Each one ends at the next start minus 1.</li>
+    </ol>
+    <div class="answer"><span class="mono">10.20.30.0/26     .0   – .63    hosts .1  – .62
+10.20.30.64/26    .64  – .127   hosts .65 – .126
+10.20.30.128/26   .128 – .191   hosts .129 – .190
+10.20.30.192/26   .192 – .255   hosts .193 – .254</span></div>
+  </div>
+  <p data-lang="ru">Правило для головы: нужно 2 подсети — префикс +1, 4 — +2, 8 — +3, 16 — +4. Число подсетей = 2 в степени «сколько добавил».</p>
+  <p data-lang="en">Rule of thumb: 2 subnets means prefix +1, 4 means +2, 8 means +3, 16 means +4. The number of subnets = 2 to the power of what you added.</p>
+
+  <!-- ============ 5 ============ -->
+  <h2 id="ex3">
+    <span data-lang="ru">Пример 3. Подсети разного размера</span>
+    <span data-lang="en">Example 3. Subnets of different sizes</span>
+  </h2>
+  <p data-lang="ru">Реальная жизнь: отделы разного размера, плюс маленькие сети для оборудования. Делить всё на равные куски — расточительно.
+    Приём тот же, добавляется одно правило: <b>сначала раздаём самые большие сети, потом меньшие</b>, каждая следующая начинается сразу за предыдущей.</p>
+  <p data-lang="en">Real life: departments of different sizes, plus small networks for equipment. Cutting everything into equal pieces is wasteful.
+    The trick is the same, with one rule added: <b>hand out the largest networks first, the smaller ones after</b>, each starting right where the previous one ended.</p>
+  <div class="ex" data-lang="ru">
+    <div class="task">Есть <span class="mono">172.16.5.0/24</span>. Нужно: офис — 100 хостов, склад — 50, серверы — 20, линк до роутера — 2.</div>
+    <ol>
+      <li><b class="mark">Подбираем маску под каждое число</b> (хостов = шаг − 2):<br>
+          100 → шаг 128 → /25 · 50 → 64 → /26 · 20 → 32 → /27 · 2 → 4 → /30</li>
+      <li><b class="mark">Сортируем по убыванию</b> и нарезаем подряд:</li>
+    </ol>
+    <div class="answer"><span class="mono">Офис     172.16.5.0/25     .0   – .127   (126 хостов)
+Склад    172.16.5.128/26   .128 – .191   (62)
+Серверы  172.16.5.192/27   .192 – .223   (30)
+Линк     172.16.5.224/30   .224 – .227   (2)
+Свободно 172.16.5.228 – .255</span></div>
+  </div>
+  <div class="ex" data-lang="en">
+    <div class="task">You have <span class="mono">172.16.5.0/24</span>. You need: office — 100 hosts, warehouse — 50, servers — 20, link to the router — 2.</div>
+    <ol>
+      <li><b class="mark">Pick a mask for each number</b> (hosts = step − 2):<br>
+          100 → step 128 → /25 · 50 → 64 → /26 · 20 → 32 → /27 · 2 → 4 → /30</li>
+      <li><b class="mark">Sort descending</b> and slice them one after another:</li>
+    </ol>
+    <div class="answer"><span class="mono">Office     172.16.5.0/25     .0   – .127   (126 hosts)
+Warehouse  172.16.5.128/26   .128 – .191   (62)
+Servers    172.16.5.192/27   .192 – .223   (30)
+Link       172.16.5.224/30   .224 – .227   (2)
+Free       172.16.5.228 – .255</span></div>
+  </div>
+  <div class="note" data-lang="ru">Проверка: каждая сеть начинается с числа, кратного своему шагу. 128 кратно 64 ✓, 192 кратно 32 ✓, 224 кратно 4 ✓.
+    Если бы мы начали с линка /30 по адресу .0, а потом попытались положить /25 на .4 — не вышло бы: 4 не кратно 128. Поэтому большие — первыми.</div>
+  <div class="note" data-lang="en">Check: every network starts at a multiple of its own step. 128 is a multiple of 64 ✓, 192 of 32 ✓, 224 of 4 ✓.
+    Had we started with the /30 link at .0 and then tried to put the /25 at .4, it would not work: 4 is not a multiple of 128. Hence the largest go first.</div>
+
+  <!-- ============ 6 ============ -->
+  <h2 id="ex4">
+    <span data-lang="ru">Пример 4. Маска в третьем октете</span>
+    <span data-lang="en">Example 4. Mask in the third octet</span>
+  </h2>
+  <p data-lang="ru">Когда префикс меньше /24, шаг переезжает в третий октет, а четвёртый становится «весь от 0 до 255». Таблица та же, только сдвинутая: /16 ↔ /24, /17 ↔ /25, /18 ↔ /26 и т.д. (минус 8).</p>
+  <p data-lang="en">When the prefix is shorter than /24, the step moves into the third octet and the fourth becomes «all of 0 to 255». Same table, just shifted: /16 ↔ /24, /17 ↔ /25, /18 ↔ /26 and so on (minus 8).</p>
+  <div class="ex" data-lang="ru">
+    <div class="task">Адрес <span class="mono">10.10.13.200/22</span>. Найти сеть и диапазон.</div>
+    <ol>
+      <li><b class="mark">/22 = /30 − 8</b> → шаг 4, но в третьем октете.</li>
+      <li><b class="mark">Начала</b> в третьем октете: 0, 4, 8, 12, 16 … Где 13? Между 12 и 16 → <b>12</b>.</li>
+      <li><b class="mark">Четвёртый октет</b> целиком: у сети .0, у broadcast .255.</li>
+    </ol>
+    <div class="answer"><span class="mono">Сеть       10.10.12.0/22       маска 255.255.252.0
+Broadcast  10.10.15.255
+Хосты      10.10.12.1 – 10.10.15.254  (1022 шт. = 4 × 256 − 2)</span></div>
+  </div>
+  <div class="ex" data-lang="en">
+    <div class="task">Address <span class="mono">10.10.13.200/22</span>. Find the network and the range.</div>
+    <ol>
+      <li><b class="mark">/22 = /30 − 8</b> → step 4, but in the third octet.</li>
+      <li><b class="mark">Starts</b> in the third octet: 0, 4, 8, 12, 16 … Where is 13? Between 12 and 16 → <b>12</b>.</li>
+      <li><b class="mark">The fourth octet</b> spans fully: .0 for the network, .255 for the broadcast.</li>
+    </ol>
+    <div class="answer"><span class="mono">Network    10.10.12.0/22       mask 255.255.252.0
+Broadcast  10.10.15.255
+Hosts      10.10.12.1 – 10.10.15.254  (1022 = 4 × 256 − 2)</span></div>
+  </div>
+  <p data-lang="ru">Со вторым октетом (/9–/16) — точно так же: /14 = /30 − 16 → шаг 4 во втором октете.</p>
+  <p data-lang="en">The second octet (/9–/16) behaves the same way: /14 = /30 − 16 → step 4 in the second octet.</p>
+
+  <!-- ============ 7 ============ -->
+  <h2 id="ex5">
+    <span data-lang="ru">Пример 5. Сколько хостов → какая маска</span>
+    <span data-lang="en">Example 5. Host count → which mask</span>
+  </h2>
+  <div class="ex" data-lang="ru">
+    <div class="task">В Wi-Fi нужно 300 устройств. Какая маска?</div>
+    <ol>
+      <li><b class="mark">Прибавь 2</b> (сеть + broadcast): 302.</li>
+      <li><b class="mark">Ближайшая степень двойки сверху:</b> 256 мало, 512 подходит.</li>
+      <li><b class="mark">512 = 2 × 256</b> → шаг 2 в третьем октете → /23.</li>
+    </ol>
+    <div class="answer"><span class="mono">Нужен /23  (маска 255.255.254.0), 510 хостов.
+Например 192.168.20.0/23 → 192.168.20.0 – 192.168.21.255</span></div>
+  </div>
+  <div class="ex" data-lang="en">
+    <div class="task">A Wi-Fi network has to hold 300 devices. Which mask?</div>
+    <ol>
+      <li><b class="mark">Add 2</b> (network + broadcast): 302.</li>
+      <li><b class="mark">Nearest power of two above it:</b> 256 is too small, 512 fits.</li>
+      <li><b class="mark">512 = 2 × 256</b> → step 2 in the third octet → /23.</li>
+    </ol>
+    <div class="answer"><span class="mono">You need /23  (mask 255.255.254.0), 510 hosts.
+For example 192.168.20.0/23 → 192.168.20.0 – 192.168.21.255</span></div>
+  </div>
+  <div class="tw"><table>
+    <thead>
+      <tr data-lang="ru"><th class="n">Нужно хостов</th><th>Префикс</th><th class="n">Влезет</th></tr>
+      <tr data-lang="en"><th class="n">Hosts needed</th><th>Prefix</th><th class="n">Fits</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="n">2</td><td class="mono">/30</td><td class="n">2</td></tr>
+      <tr><td class="n"><span data-lang="ru">до 6</span><span data-lang="en">up to 6</span></td><td class="mono">/29</td><td class="n">6</td></tr>
+      <tr><td class="n"><span data-lang="ru">до 14</span><span data-lang="en">up to 14</span></td><td class="mono">/28</td><td class="n">14</td></tr>
+      <tr><td class="n"><span data-lang="ru">до 30</span><span data-lang="en">up to 30</span></td><td class="mono">/27</td><td class="n">30</td></tr>
+      <tr><td class="n"><span data-lang="ru">до 62</span><span data-lang="en">up to 62</span></td><td class="mono">/26</td><td class="n">62</td></tr>
+      <tr><td class="n"><span data-lang="ru">до 126</span><span data-lang="en">up to 126</span></td><td class="mono">/25</td><td class="n">126</td></tr>
+      <tr><td class="n"><span data-lang="ru">до 254</span><span data-lang="en">up to 254</span></td><td class="mono">/24</td><td class="n">254</td></tr>
+      <tr><td class="n"><span data-lang="ru">до 510</span><span data-lang="en">up to 510</span></td><td class="mono">/23</td><td class="n">510</td></tr>
+      <tr><td class="n"><span data-lang="ru">до 1022</span><span data-lang="en">up to 1022</span></td><td class="mono">/22</td><td class="n">1022</td></tr>
+      <tr><td class="n"><span data-lang="ru">до 65 534</span><span data-lang="en">up to 65,534</span></td><td class="mono">/16</td>
+        <td class="n"><span data-lang="ru">65 534</span><span data-lang="en">65,534</span></td></tr>
+    </tbody>
+  </table></div>
+  <p data-lang="ru">Обычно берут с запасом на одну ступень: сеть, забитая на 90%, через год станет проблемой.</p>
+  <p data-lang="en">The usual practice is to take one size larger: a network filled to 90% becomes a problem within a year.</p>
+
+  <!-- ============ 8 ============ -->
+  <h2 id="calc">
+    <span data-lang="ru">Калькулятор для проверки</span>
+    <span data-lang="en">Calculator to check yourself</span>
+  </h2>
+  <p data-lang="ru">Считай руками, потом проверяй здесь. Показывает не только ответ, но и шаги — те же, что в примерах.</p>
+  <p data-lang="en">Do the math by hand, then verify it here. It shows not just the answer but the steps — the same ones as in the examples.</p>
+  <div class="calc">
+    <div class="row">
+      <input id="cidr" class="mono" value="192.168.10.77/26" spellcheck="false">
+      <button id="go" data-i18n="calcBtn">Посчитать</button>
+      <span class="err" id="err"></span>
+    </div>
+    <div class="out" id="out"></div>
+    <div class="steps" id="steps"></div>
+  </div>
+
+  <!-- ============ 9 ============ -->
+  <h2 id="mistakes">
+    <span data-lang="ru">Типичные ошибки</span>
+    <span data-lang="en">Common mistakes</span>
+  </h2>
+  <div data-lang="ru">
+    <div class="bad"><b>Адрес сети не кратен шагу.</b> <code>192.168.1.100/26</code> — это не сеть, а хост внутри 192.168.1.64/26.
+      Роутер либо откажется принимать такой маршрут, либо молча поправит — и ты будешь искать, почему «не то».</div>
+    <div class="bad"><b>Забыть −2.</b> «Нужно 64 хоста — беру /26». Влезет 62. Два не поместятся, и это обнаружится в последний момент.</div>
+    <div class="bad"><b>Выдать хосту адрес сети или broadcast.</b> <code>.0</code> и <code>.255</code> в /24 — не для хостов. В /26 то же самое с <code>.64</code> и <code>.127</code>.</div>
+    <div class="bad"><b>Разные маски на двух концах.</b> Сервер с /24 и шлюз с /25 «видят» друг друга только пока попадают в общий кусок. Маска на всех устройствах одной сети должна быть одинаковой.</div>
+    <div class="bad"><b>Пересечение подсетей.</b> 10.0.0.0/23 и 10.0.1.0/24 накладываются. Перед добавлением новой сети проверь, что её диапазон не попадает внутрь уже существующей.</div>
+    <div class="bad"><b>Маска не в последнем октете, а считаешь как в последнем.</b> /22 — это не «шаг 4 в четвёртом октете». Сдвинь таблицу на 8.</div>
+  </div>
+  <div data-lang="en">
+    <div class="bad"><b>The network address is not a multiple of the step.</b> <code>192.168.1.100/26</code> is not a network but a host inside 192.168.1.64/26.
+      A router will either refuse the route or silently correct it — and you will be hunting for why things are «off».</div>
+    <div class="bad"><b>Forgetting the −2.</b> «I need 64 hosts, I'll take a /26.» It fits 62. Two won't, and you find out at the worst moment.</div>
+    <div class="bad"><b>Assigning a host the network or broadcast address.</b> <code>.0</code> and <code>.255</code> in a /24 are not for hosts. Same goes for <code>.64</code> and <code>.127</code> in a /26.</div>
+    <div class="bad"><b>Different masks on the two ends.</b> A server with /24 and a gateway with /25 «see» each other only while they land in the overlapping piece. Every device in one network must carry the same mask.</div>
+    <div class="bad"><b>Overlapping subnets.</b> 10.0.0.0/23 and 10.0.1.0/24 overlap. Before adding a new network, check that its range does not fall inside an existing one.</div>
+    <div class="bad"><b>Mask outside the last octet, counted as if it were inside it.</b> /22 is not «step 4 in the fourth octet». Shift the table by 8.</div>
+  </div>
+
+</main>
+
+<script>
+(function(){
+  /* ---------- i18n ---------- */
+  const I18N = {
+    ru:{
+      docTitle:'Как считать и делить сети вручную',
+      calcBtn:'Посчитать',
+      err:'Формат: a.b.c.d/N',
+      kNet:'Сеть', kMask:'Маска', kBc:'Broadcast', kRange:'Хосты', kHosts:'Хостов', kStep:'Шаг',
+      stepIn:(step,oct)=>`${step} в ${oct}-м октете`,
+      steps:(p,step,oct,starts,more,val,start,bc)=>
+        `Шаги: /${p} → шаг ${step} в ${oct}-м октете. Начала: ${starts}${more}. `+
+        `Число ${val} попадает в блок от ${start} → сеть начинается с ${start}. Broadcast = ${start}+${step}−1 = ${bc}.`,
+      notNet:'Введённый адрес — хост, не адрес сети.',
+      locale:'ru'
+    },
+    en:{
+      docTitle:'Subnet math by hand',
+      calcBtn:'Calculate',
+      err:'Format: a.b.c.d/N',
+      kNet:'Network', kMask:'Mask', kBc:'Broadcast', kRange:'Hosts', kHosts:'Host count', kStep:'Step',
+      stepIn:(step,oct)=>`${step} in octet ${oct}`,
+      steps:(p,step,oct,starts,more,val,start,bc)=>
+        `Steps: /${p} → step ${step} in octet ${oct}. Starts: ${starts}${more}. `+
+        `The number ${val} falls into the block from ${start} → the network starts at ${start}. Broadcast = ${start}+${step}−1 = ${bc}.`,
+      notNet:'The address entered is a host, not a network address.',
+      locale:'en-US'
+    }
+  };
+
+  let lang = (()=>{
+    const q = new URLSearchParams(location.search).get('lang');
+    if(I18N[q]) return q;
+    try{ const s = localStorage.getItem('lang'); if(I18N[s]) return s; }catch(e){}
+    return (navigator.language||'').toLowerCase().startsWith('ru') ? 'ru' : 'en';
+  })();
+  const L = () => I18N[lang];
+
+  /* ---------- calculator ---------- */
+  const u32=x=>x>>>0, toIp=n=>[n>>>24,(n>>>16)&255,(n>>>8)&255,n&255].join('.');
+  const maskOf=p=>p===0?0:u32(0xFFFFFFFF<<(32-p));
+  const parse=s=>{
+    const m=s.trim().match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d{1,2})$/);
+    if(!m) return null;
+    const o=m.slice(1,5).map(Number),p=+m[5];
+    if(o.some(x=>x>255)||p>32) return null;
+    return {o,p,addr:u32((o[0]<<24)|(o[1]<<16)|(o[2]<<8)|o[3])};
+  };
+  const out=document.getElementById('out'),steps=document.getElementById('steps'),
+        err=document.getElementById('err'),inp=document.getElementById('cidr');
+
+  function calc(){
+    const v=parse(inp.value);
+    if(!v){err.textContent=L().err;out.innerHTML='';steps.innerHTML='';return;}
+    err.textContent='';
+    const {o,p,addr}=v, mask=maskOf(p), net=u32(addr&mask), size=2**(32-p), bc=u32(net+size-1);
+    const hosts=p===32?1:p===31?2:size-2;
+    const oct=p===0?1:Math.ceil(p/8), step=p===0?256:2**(8-((p-1)%8+1));
+    const val=o[oct-1], start=Math.floor(val/step)*step;
+    const rows=[
+      [L().kNet,`${toIp(net)}/${p}`],[L().kMask,toIp(mask)],[L().kBc,toIp(bc)],
+      [L().kRange,p>=31?`${toIp(net)} – ${toIp(bc)}`:`${toIp(net+1)} – ${toIp(bc-1)}`],
+      [L().kHosts,hosts.toLocaleString(L().locale)],[L().kStep,L().stepIn(step,oct)]
+    ];
+    out.innerHTML=rows.map(([k,v])=>`<span class="k">${k}</span><span class="mono">${v}</span>`).join('');
+    const startsList=Array.from({length:Math.min(6,256/step)},(_,i)=>i*step).join(', ');
+    const more=256/step>6?' …':'';
+    const same=net===addr;
+    steps.innerHTML=L().steps(p,step,oct,startsList,more,val,start,start+step-1)+
+      (same?'':` <span style="color:var(--warn)">${L().notNet}</span>`);
+  }
+
+  /* ---------- apply language ---------- */
+  function applyLang(){
+    document.documentElement.lang = lang;   // CSS сам скрывает неактивный язык
+    document.title = L().docTitle;
+    document.querySelectorAll('[data-i18n]').forEach(el=>{
+      const val = L()[el.dataset.i18n];
+      if(typeof val === 'string') el.textContent = val;
+    });
+    document.querySelectorAll('#lang button').forEach(b=>{
+      b.setAttribute('aria-pressed', String(b.dataset.langBtn === lang));
+    });
+    calc();
+  }
+
+  document.getElementById('lang').addEventListener('click', e=>{
+    const b = e.target.closest('button');
+    if(!b || b.dataset.langBtn === lang) return;
+    lang = b.dataset.langBtn;
+    try{ localStorage.setItem('lang', lang); }catch(e){}
+    applyLang();
+  });
+
+  /* ---------- toc ---------- */
+  document.querySelectorAll('nav.toc a[href^="#"]').forEach(a=>{
+    a.addEventListener('click',e=>{
+      e.preventDefault();
+      const t=document.getElementById(a.getAttribute('href').slice(1));
+      if(t) t.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+  });
+  document.getElementById('go').onclick=calc;
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')calc();});
+
+  applyLang();
+})();
+</script>
+</body>
+</html>

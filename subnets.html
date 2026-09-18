@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Шпаргалка по разбиению сетей /1–/32</title>
+<style>
+  :root{
+    --paper:#fbfbf8;
+    --grid:#e6e8e2;
+    --ink:#1d2433;
+    --ink-soft:#5b6472;
+    --marker:#1f5fbf;
+    --marker-soft:#dce8fa;
+    --line:#2a2f3a;
+    --warn:#b84a1f;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--paper);color:var(--ink);
+    font:15px/1.5 "Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+  body{
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),
+                     linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:24px 24px;
+  }
+  main{max-width:1180px;margin:0 auto;padding:32px 20px 80px}
+  h1{font-size:28px;font-weight:600;letter-spacing:-.01em;margin:0 0 6px}
+  h2{font-size:20px;font-weight:600;margin:48px 0 12px}
+  p.lead{color:var(--ink-soft);max-width:70ch;margin:0 0 24px}
+  code,.mono{font-family:ui-monospace,"JetBrains Mono","Cascadia Mono",Consolas,monospace}
+
+  /* language switch */
+  .top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+  .lang{display:flex;flex:0 0 auto;border:2px solid var(--line);border-radius:4px;overflow:hidden}
+  .lang button{font:inherit;font-size:13px;font-weight:600;padding:5px 11px;border:0;
+    background:#fff;color:var(--ink-soft);cursor:pointer}
+  .lang button+button{border-left:2px solid var(--line)}
+  .lang button:hover{background:var(--marker-soft)}
+  .lang button[aria-pressed="true"]{background:var(--line);color:#fff}
+  .lang button:focus-visible{outline:3px solid var(--marker);outline-offset:-3px}
+
+  /* controls */
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:18px}
+  .bar input{font:inherit;padding:8px 10px;border:2px solid var(--line);border-radius:4px;
+    background:#fff;width:220px}
+  .bar input:focus{outline:3px solid var(--marker-soft);border-color:var(--marker)}
+  .bar button{font:inherit;padding:8px 14px;border:2px solid var(--line);background:#fff;
+    border-radius:4px;cursor:pointer;color:var(--ink)}
+  .bar button:hover{background:var(--marker-soft)}
+  .bar button:focus-visible{outline:3px solid var(--marker)}
+  .bar .err{color:var(--warn);font-size:14px}
+  .crumbs{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:14px;font-size:14px}
+  .crumbs a{color:var(--marker);cursor:pointer;text-decoration:underline dotted}
+  .crumbs span.cur{font-weight:600}
+
+  /* the board */
+  .board{display:flex;gap:18px;overflow-x:auto;padding:6px 4px 18px}
+  .col{flex:0 0 190px;display:flex;flex-direction:column;border:2.5px solid var(--line);
+    border-radius:3px;background:#fff;height:760px}
+  .col.base{flex-basis:150px}
+  .col h3{margin:0;padding:6px 8px;font-size:14px;font-weight:600;border-bottom:2.5px solid var(--line);
+    background:var(--paper)}
+  .col h3 small{display:block;font-weight:400;color:var(--ink-soft);font-size:12px}
+  .blk{flex:1;position:relative;border-bottom:2px solid var(--line);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;min-height:0}
+  .blk:last-child{border-bottom:0}
+  .blk:hover,.blk:focus-visible{background:var(--marker-soft);outline:none}
+  .blk .pre{font-size:22px;font-weight:600;color:var(--ink);pointer-events:none}
+  .col.dense .blk .pre{font-size:15px}
+  .blk .lo,.blk .hi{position:absolute;left:5px;font-size:11px;line-height:1;color:var(--marker);font-weight:600}
+  .blk .lo{top:3px}.blk .hi{bottom:3px}
+  .blk .full{position:absolute;left:4px;right:4px;top:20px;font-size:9px;letter-spacing:-.2px;
+    color:var(--ink-soft);display:none;text-align:center;white-space:nowrap;overflow:hidden}
+  .blk:hover .full{display:block}
+  .col.base .blk{cursor:default}
+  .col.base .blk:hover{background:transparent}
+
+  .hint{font-size:13px;color:var(--ink-soft);margin-top:6px}
+
+  /* table */
+  table{border-collapse:collapse;width:100%;background:#fff;border:2.5px solid var(--line);font-size:14px}
+  th,td{padding:6px 10px;text-align:left;border-bottom:1px solid var(--grid);white-space:nowrap}
+  th{background:var(--paper);border-bottom:2.5px solid var(--line);font-weight:600}
+  td.n{text-align:right}
+  tr.on td{background:var(--marker-soft)}
+  tr.oct td{border-top:2.5px solid var(--line)}
+  tr:hover td{background:#f1f3ee}
+  tr.on:hover td{background:var(--marker-soft)}
+  tbody tr{cursor:pointer}
+  .table-wrap{overflow-x:auto}
+  @media (max-width:640px){
+    main{padding:20px 12px 60px}
+    h1{font-size:22px}
+    .bar input{width:100%}
+    .bar label{width:100%}
+    .col{flex-basis:140px;height:70vh;min-height:520px}
+    .col.base{flex-basis:96px}
+    .blk .pre{font-size:17px}
+    .col.dense .blk .pre{font-size:13px}
+    .blk .full{display:none !important}
+    table{font-size:13px}
+  }
+  @media (prefers-reduced-motion:no-preference){
+    .blk{transition:background .12s}
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <h1 data-i18n="h1">Разбиение сетей /1–/32</h1>
+    <div class="lang" id="lang">
+      <button type="button" data-lang="ru" aria-pressed="true">RU</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+    </div>
+  </div>
+  <p class="lead" data-i18n="lead">Как на доске: слева исходная сеть, правее — как она делится пополам на каждом следующем префиксе.
+    Синие цифры у границ — первый и последний адрес блока. Клик по блоку — проваливаешься внутрь него.</p>
+
+  <div class="bar">
+    <label><span data-i18n="netLabel">Сеть:</span> <input id="cidr" class="mono" value="192.168.0.0/24" spellcheck="false"></label>
+    <button id="go" data-i18n="show">Показать</button>
+    <button id="up" data-i18n="up" data-i18n-title="upTitle" title="Подняться на уровень выше">Вверх ↑</button>
+    <button id="root">0.0.0.0/0</button>
+    <span class="err" id="err"></span>
+  </div>
+  <div class="crumbs" id="crumbs"></div>
+  <div class="board" id="board"></div>
+  <p class="hint" data-i18n="hintBoard">В таблице ниже подсвечены префиксы, которые сейчас на доске.</p>
+
+  <h2 data-i18n="h2">Все префиксы</h2>
+  <div class="table-wrap">
+  <table id="tbl">
+    <thead><tr>
+      <th data-i18n="thPrefix">Префикс</th><th data-i18n="thMask">Маска</th><th data-i18n="thWild">Wildcard</th>
+      <th class="n" data-i18n="thAddr">Адресов</th><th class="n" data-i18n="thHosts">Хостов</th>
+      <th data-i18n="thStep">Шаг</th><th data-i18n="thOctet">Октет</th><th class="n" data-i18n="thNets">Сетей в /0</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+  </div>
+  <p class="hint" data-i18n="hintTable">«Шаг» — размер блока в том октете, где проходит граница; «Хостов» — без адреса сети и broadcast (у /31 и /32 по RFC 3021 — 2 и 1).
+    Клик по строке — показать текущую сеть с этим префиксом.</p>
+</main>
+
+<script>
+(function(){
+  /* ---------- i18n ---------- */
+  const I18N = {
+    ru:{
+      docTitle:'Шпаргалка по разбиению сетей /1–/32',
+      h1:'Разбиение сетей /1–/32',
+      lead:'Как на доске: слева исходная сеть, правее — как она делится пополам на каждом следующем префиксе. '
+          +'Синие цифры у границ — первый и последний адрес блока. Клик по блоку — проваливаешься внутрь него.',
+      netLabel:'Сеть:',
+      show:'Показать',
+      up:'Вверх ↑',
+      upTitle:'Подняться на уровень выше',
+      err:'Формат: a.b.c.d/N',
+      hintBoard:'В таблице ниже подсвечены префиксы, которые сейчас на доске.',
+      h2:'Все префиксы',
+      thPrefix:'Префикс', thMask:'Маска', thWild:'Wildcard',
+      thAddr:'Адресов', thHosts:'Хостов', thStep:'Шаг', thOctet:'Октет', thNets:'Сетей в /0',
+      hintTable:'«Шаг» — размер блока в том октете, где проходит граница; «Хостов» — без адреса сети и broadcast '
+               +'(у /31 и /32 по RFC 3021 — 2 и 1). Клик по строке — показать текущую сеть с этим префиксом.',
+      baseNet:'исходная сеть',
+      blocks:(n,sz,fmt)=>`${n} × ${fmt(sz)} адресов`,
+      octetOf:o=>`${o}-й октет`,
+      octetCell:o=>`${o}-й`,
+      locale:'ru'
+    },
+    en:{
+      docTitle:'Subnetting cheat sheet /1–/32',
+      h1:'Subnetting /1–/32',
+      lead:'Like a whiteboard: the starting network on the left, and to the right how it splits in half at each '
+          +'following prefix. The blue numbers at the edges are the first and last address of the block. '
+          +'Click a block to drill into it.',
+      netLabel:'Network:',
+      show:'Show',
+      up:'Up ↑',
+      upTitle:'Go one level up',
+      err:'Format: a.b.c.d/N',
+      hintBoard:'The prefixes currently on the board are highlighted in the table below.',
+      h2:'All prefixes',
+      thPrefix:'Prefix', thMask:'Mask', thWild:'Wildcard',
+      thAddr:'Addresses', thHosts:'Hosts', thStep:'Step', thOctet:'Octet', thNets:'Networks in /0',
+      hintTable:'"Step" is the block size inside the octet where the boundary falls; "Hosts" excludes the network '
+               +'and broadcast addresses (/31 and /32 hold 2 and 1 per RFC 3021). Click a row to show the current '
+               +'network at that prefix.',
+      baseNet:'starting network',
+      blocks:(n,sz,fmt)=>`${n} × ${fmt(sz)} addresses`,
+      octetOf:o=>`octet ${o}`,
+      octetCell:o=>o+['th','st','nd','rd'][o<4?o:0],
+      locale:'en-US'
+    }
+  };
+
+  let lang = (()=>{
+    const q = new URLSearchParams(location.search).get('lang');
+    if(I18N[q]) return q;
+    try{ const s = localStorage.getItem('lang'); if(I18N[s]) return s; }catch(e){}
+    return (navigator.language||'').toLowerCase().startsWith('ru') ? 'ru' : 'en';
+  })();
+  const L = () => I18N[lang];
+  const num = n => n.toLocaleString(L().locale);
+
+  /* ---------- subnet math ---------- */
+  const u32 = x => x >>> 0;
+  const toIp = n => [n>>>24, (n>>>16)&255, (n>>>8)&255, n&255].join('.');
+  const maskOf = p => p===0 ? 0 : u32(0xFFFFFFFF << (32-p));
+  const sizeOf = p => 2 ** (32-p);
+  const octetOf = p => p===0 ? 1 : Math.ceil(p/8);           // октет, где граница
+  const stepOf  = p => p===0 ? 256 : 2 ** (8 - ((p-1)%8+1)); // шаг в этом октете
+  const shortLabel = (addr, p) => {
+    const o = octetOf(p);
+    return String((addr >>> (8*(4-o))) & 255);
+  };
+  const parse = s => {
+    const m = s.trim().match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d{1,2})$/);
+    if(!m) return null;
+    const o = m.slice(1,5).map(Number), p = +m[5];
+    if(o.some(x=>x>255) || p>32) return null;
+    const addr = u32((o[0]<<24)|(o[1]<<16)|(o[2]<<8)|o[3]);
+    return {addr: u32(addr & maskOf(p)), p};
+  };
+
+  let cur = parse('192.168.0.0/24');
+  const board = document.getElementById('board');
+  const crumbs = document.getElementById('crumbs');
+  const inp = document.getElementById('cidr');
+  const err = document.getElementById('err');
+
+  /* ---------- board ---------- */
+  function render(){
+    inp.value = toIp(cur.addr)+'/'+cur.p;
+    err.textContent = '';
+    board.innerHTML = '';
+    const depth = Math.min(3, 32-cur.p);
+    const shownPrefixes = [];
+    for(let d=0; d<=depth; d++){
+      const p = cur.p + d;
+      shownPrefixes.push(p);
+      const col = document.createElement('div');
+      col.className = 'col' + (d===0?' base':'') + (d===3?' dense':'');
+      const n = 2**d;
+      const sz = sizeOf(p);
+      const o = octetOf(p);
+      const sub = d===0 ? L().baseNet : L().blocks(n, sz, num);
+      col.innerHTML = `<h3>/${p}<small>${sub}${d? ' · '+L().octetOf(o):''}</small></h3>`;
+      for(let i=0;i<n;i++){
+        const a = u32(cur.addr + i*sz), b = u32(a + sz - 1);
+        const el = document.createElement('div');
+        el.className = 'blk'; el.tabIndex = d?0:-1;
+        el.innerHTML = `<span class="lo">${shortLabel(a,p)}</span>
+                        <span class="pre">/${p}</span>
+                        <span class="hi">${shortLabel(b,p)}</span>
+                        <span class="full mono">${toIp(a)}–${toIp(b)}</span>`;
+        el.title = `${toIp(a)}/${p}  (${toIp(a)} – ${toIp(b)})`;
+        if(d>0 && p<32){
+          const go = () => { cur = {addr:a, p}; render(); };
+          el.addEventListener('click', go);
+          el.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){e.preventDefault();go();} });
+        }
+        col.appendChild(el);
+      }
+      board.appendChild(col);
+    }
+    // crumbs: путь от /0 к текущей
+    crumbs.innerHTML = '';
+    const path = [];
+    for(let p=0; p<cur.p; p+=8) path.push(p);
+    path.forEach(p=>{
+      const a = document.createElement('a');
+      a.textContent = toIp(u32(cur.addr & maskOf(p)))+'/'+p;
+      a.onclick = () => { cur = {addr:u32(cur.addr & maskOf(p)), p}; render(); };
+      crumbs.appendChild(a);
+      crumbs.appendChild(document.createTextNode(' › '));
+    });
+    const s = document.createElement('span'); s.className='cur';
+    s.textContent = toIp(cur.addr)+'/'+cur.p; crumbs.appendChild(s);
+    // table highlight
+    document.querySelectorAll('#tbl tbody tr').forEach(tr=>{
+      tr.classList.toggle('on', shownPrefixes.includes(+tr.dataset.p));
+    });
+  }
+
+  /* ---------- prefix table (rebuilt on language change) ---------- */
+  function buildTable(){
+    const tb = document.querySelector('#tbl tbody');
+    tb.innerHTML = '';
+    for(let p=1;p<=32;p++){
+      const sz = sizeOf(p);
+      const hosts = p===32?1 : p===31?2 : sz-2;
+      const tr = document.createElement('tr');
+      tr.dataset.p = p;
+      if((p-1)%8===0 && p>1) tr.className='oct';
+      tr.innerHTML = `<td class="mono"><b>/${p}</b></td>
+        <td class="mono">${toIp(maskOf(p))}</td>
+        <td class="mono">${toIp(u32(~maskOf(p)))}</td>
+        <td class="n mono">${num(sz)}</td>
+        <td class="n mono">${num(hosts)}</td>
+        <td class="mono">${stepOf(p)}</td>
+        <td>${L().octetCell(octetOf(p))}</td>
+        <td class="n mono">${num(2**p)}</td>`;
+      tr.onclick = () => { cur = {addr:u32(cur.addr & maskOf(p)), p}; render(); window.scrollTo({top:0,behavior:'smooth'}); };
+      tb.appendChild(tr);
+    }
+  }
+
+  /* ---------- apply language ---------- */
+  function applyLang(){
+    document.documentElement.lang = lang;
+    document.title = L().docTitle;
+    document.querySelectorAll('[data-i18n]').forEach(el=>{
+      const v = L()[el.dataset.i18n];
+      if(typeof v === 'string') el.textContent = v;
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(el=>{
+      el.title = L()[el.dataset.i18nTitle];
+    });
+    document.querySelectorAll('#lang button').forEach(b=>{
+      b.setAttribute('aria-pressed', String(b.dataset.lang === lang));
+    });
+    buildTable();
+    render();
+  }
+
+  document.getElementById('lang').addEventListener('click', e=>{
+    const b = e.target.closest('button');
+    if(!b || b.dataset.lang === lang) return;
+    lang = b.dataset.lang;
+    try{ localStorage.setItem('lang', lang); }catch(e){}
+    applyLang();
+  });
+
+  /* ---------- controls ---------- */
+  document.getElementById('go').onclick = () => {
+    const v = parse(inp.value);
+    if(!v){ err.textContent = L().err; return; }
+    cur = v; render();
+  };
+  inp.addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('go').click(); });
+  document.getElementById('up').onclick = () => {
+    if(cur.p===0) return;
+    const p = cur.p-1; cur = {addr:u32(cur.addr & maskOf(p)), p}; render();
+  };
+  document.getElementById('root').onclick = () => { cur = {addr:0,p:0}; render(); };
+
+  applyLang();
+})();
+</script>
+</body>
+</html>
